@@ -420,11 +420,18 @@ $("provider-fare-form").addEventListener("submit", async (event) => {
     target.append(el("p", "callout", result.notice));
     if (result.provider_note) target.append(el("p", "hint", result.provider_note));
     if (!result.trains.length) target.append(el("p", "", "The provider returned no fares for this route and class."));
-    for (const train of result.trains) {
+    const addFareRow = (container, train) => {
       const card = el("div", "fare-train-row", "");
       card.append(el("strong", "", `${train.train_no} · ${train.train_name || "Train"}`));
       card.append(el("span", "", `₹${train.fare_rupees.toLocaleString("en-IN")} ${train.dynamic_fare ? "· dynamic base fare" : "· indicative fare"}`));
-      target.append(card);
+      container.append(card);
+    };
+    result.trains.slice(0, 5).forEach((train) => addFareRow(target, train));
+    if (result.trains.length > 5) {
+      const more = el("details", "other-trains");
+      more.append(el("summary", "", `Show ${result.trains.length - 5} more trains`));
+      result.trains.slice(5).forEach((train) => addFareRow(more, train));
+      target.append(more);
     }
     target.append(el("p", "subtle", `Source: ${result.source}; checked ${checkedAt(result.as_of)}`));
   } catch (err) { error(target, err); }
