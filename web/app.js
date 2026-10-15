@@ -31,7 +31,7 @@ function line(target, label, value) {
 }
 function officialCheck(target, trainNo, origin, destination) {
   const date = $("travel-date").value;
-  const note = el("p", "hint", `For ${date}: enter train ${trainNo}, ${origin} → ${destination}, class and quota on the official site. Its live result is not imported into this app.`);
+  const note = el("p", "hint", `Check train ${trainNo} for ${date} on the official site. Current results are not shown here.`);
   const links = el("div", "official-actions");
   for (const [label, href] of [
     ["Check current fare ↗", "https://www.indianrail.gov.in/enquiry/FARE/FareEnquiry.html?locale=en"],
@@ -102,23 +102,17 @@ $("history-form").addEventListener("submit", async (event) => {
     const summary = el("div", "card");
     summary.append(el("h3", "", `${result.origin_code} → ${result.destination_code}`));
     const totalTrains = result.matching_trains + result.schedule_only_count;
-    summary.append(el("p", "", `${totalTrains} historical timetable train${totalTrains === 1 ? "" : "s"} found for this route.`));
-    if (result.max_duration_minutes) summary.append(el("p", "hint", `Only snapshot journeys of at most ${Math.floor(result.max_duration_minutes / 60)} hours are shown.`));
-    summary.append(el("p", "hint", `Sort: ${$("sort").selectedOptions[0].textContent}. Recorded and estimated prices have different reliability; a small estimated price difference does not establish the cheaper train.`));
-    if (result.matching_trains)
-      summary.append(el("p", "hint", `Historical fares are available for ${result.matching_trains} of these trains (${result.matching_class_fares} class prices).`));
+    summary.append(el("p", "", `${totalTrains} train${totalTrains === 1 ? "" : "s"} found · Sorted by ${$("sort").selectedOptions[0].textContent.toLowerCase()}.`));
     if (result.schedule_only_count)
-      summary.append(el("p", "callout", `Exact historical fare rows are missing for ${result.schedule_only_count} train${result.schedule_only_count === 1 ? "" : "s"} on this station pair. Estimated prices cannot confirm your budget, offered class, or seat availability.`));
+      summary.append(el("p", "hint", `Some fares are estimates because recorded prices are unavailable. Check current fares and seats before booking.`));
     if (totalTrains === 1)
       summary.append(el("p", "callout", "Only one train matches this route and these filters, so all three sort choices show the same train."));
-    summary.append(el("p", "hint", result.notice));
     target.append(summary);
     const ranked = [
       ...result.options.map((item) => ({item, estimated: false})),
       ...result.schedule_only.map((item) => ({item, estimated: true}))
     ];
     const rankingClass = result.class_filter || "SL";
-    if (result.sort_used === "fare") summary.append(el("p", "hint", `Fare ordering uses ${rankingClass}. Trains without a recorded or estimated ${rankingClass} price follow priced trains. Estimates do not confirm that this class is offered.`));
     const rankFare = ({item, estimated}) => estimated ? item.ranking_estimated_fare :
       item.fares.find((fare) => fare.class === rankingClass)?.fare;
     ranked.sort((a, b) => result.sort_used === "duration"
@@ -134,7 +128,7 @@ $("history-form").addEventListener("submit", async (event) => {
       card.append(el("h3", "", `${item.train_no} · ${item.name}`));
       card.append(el("p", "hint", estimated ? "Timetable match; class availability and fares are unverified." : "Recorded October 2023 class fares for this station pair."));
       const fares = el("div", "fare-options");
-      if (estimated) item.fare_estimates.forEach((fare) => fares.append(el("span", "fare-option", `Estimated ${fare.class} ₹${fare.fare} (test average error ₹${Math.round(fare.test_mae_rupees)})`)));
+      if (estimated) item.fare_estimates.forEach((fare) => fares.append(el("span", "fare-option", `Estimated ${fare.class} ₹${fare.fare}`)));
       else item.fares.forEach((fare) => fares.append(el("span", "fare-option", `${fare.class} · ₹${fare.fare} recorded`)));
       card.append(fares);
       line(card, "Route", `${item.origin} → ${item.destination}`);

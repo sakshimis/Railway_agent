@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Railway AI • Journey Rescue Lab</title>
+  <title>Railway AI • Journey Planner</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="mark">↗</span><span>Railway AI<br><small>Journey Rescue Lab</small></span></div>
+    <div class="brand"><span class="mark">↗</span><span>Railway AI<br><small>Journey Planner</small></span></div>
     <div class="row"><span id="signed-in" class="pill">Offline case-study demo</span><button id="logout" class="secondary" hidden>Log out</button></div>
   </header>
   <section id="login-screen" class="login-screen">
@@ -25,8 +25,8 @@
     <section class="hero">
       <div class="eyebrow">RAILWAY TRAVEL ASSISTANT</div>
       <h1>Plan your journey.</h1>
-      <p>Explore historical train routes and fares, and use the separate sample passenger services.</p>
-      <div class="notice">Route prices and timetables come from an October 2023 Kaggle snapshot. Delay history is from 2025–26. Neither is live. PNR, refunds and the admin simulation are synthetic. No ticket is booked or charged.</div>
+      <p>Compare routes, travel times and fares.</p>
+      <div class="notice">Historical data only. Check current prices and seats before you travel.</div>
     </section>
     <nav class="tabs" aria-label="Demo sections">
       <button class="tab active" data-tab="planner">Journey planner</button>
@@ -38,30 +38,20 @@
     </nav>
     <section class="panel active" id="planner">
       <div class="section-head"><div><div class="eyebrow">01 / HISTORICAL ROUTE SEARCH</div><h2>Journey planner</h2></div><span class="tag">October 2023 snapshot</span></div>
-      <div class="grid two">
-        <form id="history-form" class="card">
+      <form id="history-form" class="card planner-form">
           <label for="quick-query">Or describe a route (optional)</label><input id="quick-query" placeholder="from Pune to Delhi under 1500 sleeper">
-          <p class="hint">A sentence fills route, budget and class for this historical comparison. Travel dates cannot be verified from the snapshot.</p>
+          <p class="hint">A sentence can fill the route, budget and class.</p>
           <label for="origin">From station or code</label><input id="origin" value="PUNE" list="station-list" required>
           <label for="destination">To station or code</label><input id="destination" value="NDLS" list="station-list" required>
           <datalist id="station-list"></datalist>
           <label for="travel-date">Journey date for official check</label><input id="travel-date" type="date" required>
-          <p class="hint">The date is used only for the official fare and seat check. Historical results below do not verify service on that date.</p>
+          <p class="hint">Use this date when checking current fares and seats on the official site.</p>
           <label for="travel-class">Travel class</label><select id="travel-class"><option value="">All classes</option><option>SL</option><option>3A</option><option>2A</option><option>1A</option><option>CC</option><option>2S</option></select>
           <label for="max-fare">Maximum historical fare (₹, optional)</label><input id="max-fare" type="number" min="1" placeholder="No limit">
           <label for="max-duration">Maximum scheduled journey (hours, optional)</label><input id="max-duration" type="number" min="1" max="168" placeholder="No limit">
           <label for="sort">Sort results</label><select id="sort"><option value="fare">Lowest historical fare or estimated fare</option><option value="duration">Shortest scheduled journey</option><option value="departure">Earliest departure</option></select>
-          <p class="hint">Sorting changes the order only when multiple trains match. For estimated fares, select a class; otherwise the fare sort compares Sleeper (SL) estimates.</p>
-          <button type="submit" class="primary">Find historical trains →</button>
-        </form>
-        <div class="card guide">
-          <div class="eyebrow">ABOUT THESE RESULTS</div>
-          <p>The search uses historical fare and timetable records. You can compare classes, fares and scheduled journey times.</p>
-          <p>The listed trains may not run on your travel date. Use the official check below for the current fare and seat availability.</p>
-          <a class="official-link" href="https://www.indianrail.gov.in/enquiry/FARE/FareEnquiry.html?locale=en" target="_blank" rel="noopener noreferrer">Open Indian Railways fare enquiry ↗</a>
-          <p class="hint">Try PUNE → NDLS, or enter a station name or code. The admin area contains a separate agent simulation with decision trails.</p>
-        </div>
-      </div>
+          <button type="submit" class="primary">Find trains →</button>
+      </form>
       <div id="history-result" class="result" aria-live="polite"></div>
     </section>
     <section class="panel admin-only" id="predictions">
