@@ -4,6 +4,8 @@
 
 This local Python web app separates passenger and administrator roles. Passenger route search uses a public Kaggle **historical snapshot**, while the admin area holds synthetic agent scenarios, model demonstrations, governance and audit. It is an educational prototype, not a live railway booking service.
 
+`db/postgres_schema.sql` is a proposed PostgreSQL schema for the next development stage. The running app still uses its bundled SQLite catalog and local runtime files; no PostgreSQL migration has been performed.
+
 ## Start on Windows
 
 1. Open PowerShell in this folder.
