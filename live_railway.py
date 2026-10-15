@@ -88,3 +88,99 @@ def search_live(origin: str, destination: str, travel_date: str, travel_class: s
     return {"origin": origin, "destination": destination, "travel_date": travel_date,
             "as_of": str(provider.get("as_of") or "Unknown"), "trains": trains,
             "source": "authorized live provider"}
+
+
+def search_live_pnr(pnr: str) -> dict:
+    """Fetch live PNR status through an authorized provider gateway.
+
+    If unconfigured, raises LiveServiceUnavailable.
+    """
+    endpoint = os.getenv("RAILWAY_LIVE_API_URL", "").strip()
+    token = os.getenv("RAILWAY_LIVE_API_TOKEN", "").strip()
+    if not endpoint or not token:
+        raise LiveServiceUnavailable("Live PNR enquiry is not connected yet.")
+    parsed_url = urlsplit(endpoint)
+    if parsed_url.scheme != "https" or not parsed_url.netloc or parsed_url.username or parsed_url.password:
+        raise LiveServiceUnavailable("The live provider URL must be HTTPS.")
+    pnr = str(pnr).strip()
+    if not re.fullmatch(r"\d{10}", pnr):
+        raise ValueError("Enter a valid 10-digit PNR number.")
+    separator = "&" if parsed_url.query else "?"
+    query = urlencode({"pnr": pnr, "type": "pnr_status"})
+    request = Request(endpoint + separator + query,
+                      headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=8) as response:
+            raw = response.read(1_000_001)
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise LiveServiceUnavailable("The live PNR provider is unavailable. Try again later.") from exc
+    if len(raw) > 1_000_000:
+        raise LiveServiceUnavailable("The live provider response was too large.")
+    try:
+        data = json.loads(raw)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise LiveServiceUnavailable("The live provider returned invalid data.") from exc
+    return {
+        "pnr": pnr,
+        "train_no": str(data.get("train_no", ""))[:16],
+        "train_name": str(data.get("train_name", ""))[:120],
+        "journey_date": str(data.get("journey_date", ""))[:16],
+        "class": str(data.get("class", ""))[:8],
+        "status": str(data.get("status", "Unknown"))[:60],
+        "chart_prepared": bool(data.get("chart_prepared", False)),
+        "as_of": str(data.get("as_of", "Unknown")),
+        "source": "authorized live provider",
+    }
+
+
+def search_live_seats(train_no: str, travel_date: str, travel_class: str, origin: str = "", destination: str = "") -> dict:
+    """Fetch live seat availability for a specific train through an authorized provider gateway.
+
+    If unconfigured, raises LiveServiceUnavailable.
+    """
+    endpoint = os.getenv("RAILWAY_LIVE_API_URL", "").strip()
+    token = os.getenv("RAILWAY_LIVE_API_TOKEN", "").strip()
+    if not endpoint or not token:
+        raise LiveServiceUnavailable("Live seat availability is not connected yet.")
+    parsed_url = urlsplit(endpoint)
+    if parsed_url.scheme != "https" or not parsed_url.netloc or parsed_url.username or parsed_url.password:
+        raise LiveServiceUnavailable("The live provider URL must be HTTPS.")
+    train_no = str(train_no).strip()
+    if not (train_no.isdigit() and len(train_no) <= 6):
+        raise ValueError("Enter a valid train number.")
+    try:
+        date.fromisoformat(travel_date)
+    except ValueError as exc:
+        raise ValueError("Enter a valid journey date.") from exc
+    travel_class = travel_class.strip().upper()
+    if travel_class not in {"SL", "3A", "2A", "1A", "CC", "2S"}:
+        raise ValueError("Choose a valid travel class (SL, 3A, 2A, 1A, CC, 2S).")
+    params = {"train_no": train_no, "date": travel_date, "class": travel_class, "type": "seat_availability"}
+    if origin:
+        params["origin"] = origin.strip().upper()
+    if destination:
+        params["destination"] = destination.strip().upper()
+    separator = "&" if parsed_url.query else "?"
+    query = urlencode(params)
+    request = Request(endpoint + separator + query,
+                      headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=8) as response:
+            raw = response.read(1_000_001)
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise LiveServiceUnavailable("The live availability provider is unavailable. Try again later.") from exc
+    if len(raw) > 1_000_000:
+        raise LiveServiceUnavailable("The live provider response was too large.")
+    try:
+        data = json.loads(raw)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise LiveServiceUnavailable("The live provider returned invalid data.") from exc
+    return {
+        "train_no": train_no,
+        "travel_date": travel_date,
+        "class": travel_class,
+        "availability": str(data.get("availability", "Unknown"))[:80],
+        "fare_rupees": data.get("fare_rupees"),
+        "as_of": str(data.get("as_of", "Unknown")),
+        "source": "authorized live provider",
+    }

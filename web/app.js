@@ -139,9 +139,13 @@ $("history-form").addEventListener("submit", async (event) => {
       ? a.item.duration_minutes - b.item.duration_minutes || a.item.departure.localeCompare(b.item.departure)
       : result.sort_used === "departure"
         ? a.item.departure.localeCompare(b.item.departure) || a.item.duration_minutes - b.item.duration_minutes
-        : (rankFare(a) ?? Infinity) - (rankFare(b) ?? Infinity) || a.item.duration_minutes - b.item.duration_minutes);
+        : result.sort_used === "balanced"
+          ? (a.item.balanced_score ?? Infinity) - (b.item.balanced_score ?? Infinity) || a.item.duration_minutes - b.item.duration_minutes
+          : (rankFare(a) ?? Infinity) - (rankFare(b) ?? Infinity) || a.item.duration_minutes - b.item.duration_minutes);
     const sortReason = result.sort_used === "duration" ? "Shortest scheduled journey" :
-      result.sort_used === "departure" ? "Earliest departure" : `Lowest ${rankingClass} recorded or estimated fare`;
+      result.sort_used === "departure" ? "Earliest departure" :
+      result.sort_used === "balanced" ? "Balanced best value (fare, duration & delay)" :
+      `Lowest ${rankingClass} recorded or estimated fare`;
     const trainCard = ({item, estimated}, featured = false) => {
       const card = el("div", featured ? "card train-card recommendation" : "card train-card");
       if (featured) card.append(el("div", "eyebrow", `FIRST BY ${sortReason.toUpperCase()} · ${estimated ? "ESTIMATED PRICE" : "RECORDED PRICE"}`));
@@ -261,6 +265,16 @@ $("plan-form").addEventListener("submit", async (event) => {
       selected.append(feedback);
     }
     target.append(selected);
+    if (result.disruption_rescue) {
+      const rescueBox = el("div", "card");
+      rescueBox.style.marginTop = "16px";
+      rescueBox.style.borderLeft = "5px solid #d97706";
+      rescueBox.append(el("div", "eyebrow", "DISRUPTION RESCUE AGENT ACTIVE"));
+      rescueBox.append(el("h3", "", `Rescue Recommendation: ${result.disruption_rescue.rescue_train}`));
+      rescueBox.append(el("p", "", result.disruption_rescue.reason));
+      line(rescueBox, "Disrupted option(s)", result.disruption_rescue.disrupted_trains.join(", "));
+      target.append(rescueBox);
+    }
     if (result.alternatives.length) {
       const alternatives = el("div", "card");
       alternatives.style.marginTop = "16px";
@@ -269,6 +283,19 @@ $("plan-form").addEventListener("submit", async (event) => {
       target.append(alternatives);
     }
     if (currentRole !== "admin") return;
+    if (Array.isArray(result.orchestration_trail)) {
+      const agentBox = el("div", "card");
+      agentBox.style.marginTop = "16px";
+      agentBox.append(el("div", "eyebrow", "MULTI-AGENT ORCHESTRATION PIPELINE"));
+      agentBox.append(el("h3", "", "Autonomous agent execution trace"));
+      result.orchestration_trail.forEach((step) => {
+        const row = el("div", "decision");
+        row.append(el("strong", "", step.agent + " (" + step.status + "): "));
+        row.append(document.createTextNode(step.action));
+        agentBox.append(row);
+      });
+      target.append(agentBox);
+    }
     const detail = el("div", "card");
     detail.style.marginTop = "16px";
     detail.append(el("h3", "", "Decision trail"));
@@ -341,7 +368,15 @@ async function loadGovernance() {
     target.replaceChildren();
     line(target, "Status", report.status);
     line(target, "Active delay model", report.registry.active.delay);
-    line(target, "Recent support abstentions", report.support_abstentions_in_recent_audit);
+    if (report.support_metrics) {
+      line(target, "Support hallucination control",
+        `${report.support_metrics.grounded_answers} answered / ${report.support_metrics.abstained_queries} abstained (${(report.support_metrics.abstention_rate * 100).toFixed(1)}% abstention rate)`);
+    } else {
+      line(target, "Recent support abstentions", report.support_abstentions_in_recent_audit);
+    }
+    if (report.confirmation_model_evaluation) {
+      line(target, "Confirmation test Brier score", report.confirmation_model_evaluation.brier_score ?? "N/A");
+    }
     line(target, "Synthetic recommendation feedback", `${report.recommendation_feedback.helpful} useful / ${report.recommendation_feedback.responses} responses`);
     line(target, "Historical search feedback", `${report.historical_recommendation_feedback.helpful} useful / ${report.historical_recommendation_feedback.responses} responses (recent audit sample)`);
     line(target, "Average latency", report.recent_average_latency_ms === null ?
@@ -358,6 +393,17 @@ async function loadGovernance() {
     line(target, "Root cause summary", report.root_cause_summary);
     const data = $("data-report");
     data.replaceChildren();
+    if (Array.isArray(report.registered_models)) {
+      const modelCard = el("div", "evidence-block");
+      modelCard.append(el("h4", "", "Autonomous AI Model Registry"));
+      report.registered_models.forEach((m) => {
+        const item = el("div", "decision");
+        item.append(el("strong", "", m.name + ": "));
+        item.append(document.createTextNode(`${m.type} · Status: ${m.status}`));
+        modelCard.append(item);
+      });
+      data.append(modelCard);
+    }
     const evidence = report.kaggle_evidence || {};
     for (const [label, section] of Object.entries(evidence)) {
       const card = el("div", "evidence-block");

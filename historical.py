@@ -8,9 +8,14 @@ from pathlib import Path
 
 DATA = Path(__file__).parent / "data"
 CATALOG = DATA / "historical_catalog.sqlite"
-ALIASES = {"pune": "PUNE", "delhi": "NDLS", "new delhi": "NDLS", "ratlam": "RTM",
-           "mumbai": "CSMT", "mumbai csmt": "CSMT", "kolkata": "HWH",
-           "chennai": "MAS", "bengaluru": "SBC", "bangalore": "SBC"}
+ALIASES = {
+    "pune": "PUNE", "delhi": "NDLS", "new delhi": "NDLS", "ratlam": "RTM",
+    "mumbai": "CSMT", "mumbai csmt": "CSMT", "cstm": "CSMT", "kolkata": "HWH",
+    "howrah": "HWH", "chennai": "MAS", "bengaluru": "SBC", "bangalore": "SBC",
+    "hyderabad": "HYB", "secunderabad": "SC", "patna": "PNBE", "ahmedabad": "ADI",
+    "jaipur": "JP", "lucknow": "LKO", "varanasi": "BSB", "guwahati": "GHY",
+    "surat": "ST", "nagpur": "NGP", "bhopal": "BPL", "chandigarh": "CDG",
+}
 
 
 def connection():
@@ -117,7 +122,9 @@ def search(origin: str, destination: str, travel_class: str = "", max_fare: int 
         raise ValueError("Origin and destination must differ.")
     if max_fare is not None and not 0 < max_fare < 1000000:
         raise ValueError("Budget must be a positive rupee amount.")
-    if sort not in {"fare", "duration", "departure"}:
+    if sort in {"balanced", "recommended"}:
+        sort = "balanced"
+    if sort not in {"fare", "duration", "departure", "balanced"}:
         raise ValueError("Unknown sort option.")
     if max_duration_minutes is not None and not 0 < max_duration_minutes <= 7 * 1440:
         raise ValueError("Maximum journey duration must be between 1 minute and 7 days.")
@@ -154,9 +161,23 @@ def search(origin: str, destination: str, travel_class: str = "", max_fare: int 
     trains = list(grouped.values())
     for item in trains:
         item["fares"].sort(key=lambda fare: fare["fare"])
-    trains.sort(key=lambda item: (item["fares"][0]["fare"], item["duration_minutes"]) if sort == "fare"
-                else (item["duration_minutes"], item["fares"][0]["fare"]) if sort == "duration"
-                else (item["departure"], item["fares"][0]["fare"]))
+    if sort == "balanced":
+        min_f = min((t["fares"][0]["fare"] for t in trains), default=1)
+        max_f = max((t["fares"][0]["fare"] for t in trains), default=1)
+        min_d = min((t["duration_minutes"] for t in trains), default=1)
+        max_d = max((t["duration_minutes"] for t in trains), default=1)
+        for t in trains:
+            f_norm = (t["fares"][0]["fare"] - min_f) / (max_f - min_f) if max_f > min_f else 0.0
+            d_norm = (t["duration_minutes"] - min_d) / (max_d - min_d) if max_d > min_d else 0.0
+            del_norm = min(1.0, max(0.0, (t["delay_history"]["minutes"] or 0) / 60.0))
+            t["balanced_score"] = round(0.45 * f_norm + 0.35 * d_norm + 0.20 * del_norm, 3)
+        trains.sort(key=lambda item: (item["balanced_score"], item["duration_minutes"]))
+    elif sort == "fare":
+        trains.sort(key=lambda item: (item["fares"][0]["fare"], item["duration_minutes"]))
+    elif sort == "duration":
+        trains.sort(key=lambda item: (item["duration_minutes"], item["fares"][0]["fare"]))
+    else:
+        trains.sort(key=lambda item: (item["departure"], item["fares"][0]["fare"]))
     # The schedule file covers routes for which the fare file has no direct pair.
     with connection() as db:
         schedule_rows = db.execute("""
@@ -192,15 +213,51 @@ def search(origin: str, destination: str, travel_class: str = "", max_fare: int 
                                                 if fare["class"] == ranking_class), None)
         schedule_only.append(item)
         seen_schedule_numbers.add(item["train_no"])
-    schedule_only.sort(key=lambda item: (item["ranking_estimated_fare"] or float("inf"), item["duration_minutes"], item["departure"])
-                       if sort == "fare" else (item["duration_minutes"], item["departure"])
-                       if sort == "duration" else (item["departure"], item["duration_minutes"]))
+    if sort == "balanced":
+        min_f = min((t["ranking_estimated_fare"] or 1 for t in schedule_only), default=1)
+        max_f = max((t["ranking_estimated_fare"] or 1 for t in schedule_only), default=1)
+        min_d = min((t["duration_minutes"] for t in schedule_only), default=1)
+        max_d = max((t["duration_minutes"] for t in schedule_only), default=1)
+        for t in schedule_only:
+            fare_val = t["ranking_estimated_fare"] or max_f
+            f_norm = (fare_val - min_f) / (max_f - min_f) if max_f > min_f else 0.0
+            d_norm = (t["duration_minutes"] - min_d) / (max_d - min_d) if max_d > min_d else 0.0
+            del_norm = min(1.0, max(0.0, (t["delay_history"]["minutes"] or 0) / 60.0))
+            t["balanced_score"] = round(0.45 * f_norm + 0.35 * d_norm + 0.20 * del_norm, 3)
+        schedule_only.sort(key=lambda item: (item["balanced_score"], item["duration_minutes"]))
+    elif sort == "fare":
+        schedule_only.sort(key=lambda item: (item["ranking_estimated_fare"] or float("inf"), item["duration_minutes"], item["departure"]))
+    elif sort == "duration":
+        schedule_only.sort(key=lambda item: (item["duration_minutes"], item["departure"]))
+    else:
+        schedule_only.sort(key=lambda item: (item["departure"], item["duration_minutes"]))
     return {"origin_code": start, "destination_code": end, "matching_trains": len(trains),
             "matching_class_fares": len(options), "options": trains[:30], "snapshot": "October 2023",
             "schedule_only_count": len(schedule_only), "schedule_only": schedule_only[:30],
             "sort_used": sort, "class_filter": travel_class, "budget_limit": max_fare,
             "max_duration_minutes": max_duration_minutes,
             "notice": "Historical Kaggle fare and timetable snapshot. Current ticket prices, running days, seats and availability for your travel date are unknown. Verify with an official railway service before booking."}
+
+
+def station_details(value: str) -> dict:
+    station_code = resolve_station(value)
+    with connection() as db:
+        row = db.execute("SELECT code, name FROM schedule_stops WHERE code=? LIMIT 1", (station_code,)).fetchone()
+        if not row:
+            row = db.execute("SELECT origin_code AS code, origin AS name FROM trains WHERE origin_code=? LIMIT 1", (station_code,)).fetchone()
+        if not row:
+            raise ValueError(f"Station details not found for '{value}'.")
+        stop_count = db.execute("SELECT COUNT(*) FROM schedule_stops WHERE code=?", (station_code,)).fetchone()[0]
+        routes_from_here = db.execute("SELECT COUNT(DISTINCT destination_code) FROM trains WHERE origin_code=?", (station_code,)).fetchone()[0]
+    return {
+        "code": row["code"],
+        "name": row["name"],
+        "timetable_stops_passing_through": stop_count,
+        "historical_priced_routes_from_here": routes_from_here,
+        "snapshot": "October 2023",
+        "data_source": "Historical Kaggle timetable/fare catalog",
+        "notice": "Historical catalog metadata; live running status, platforms, and current services are not connected.",
+    }
 
 
 def report() -> dict:

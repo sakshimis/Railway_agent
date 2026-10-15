@@ -7,13 +7,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 from railway import (
-    confirmation_prediction, fraud_assessment, parse_request, plan_journey,
-    pnr_status, refund_status, support_answer,
+    confirmation_prediction, evaluate_confirmation_model, fare_prediction,
+    fraud_assessment, parse_request, plan_journey, pnr_status, refund_status,
+    support_answer,
 )
 from governance import governance_report, retraining_candidate
 from app import Handler
 from historical import (search as historical_search, report as kaggle_report,
-                        resolve_station, stations, train_on_route)
+                        resolve_station, station_details, stations, train_on_route)
 import auth
 import live_railway
 
@@ -248,6 +249,117 @@ class RailwayDemoTests(unittest.TestCase):
                 with self.assertRaises(auth.LoginRateLimited):
                     auth.login("user", "a long demo password", "test-client")
                 self.assertIsNotNone(auth.login("user", "a long demo password", "other-client"))
+
+    def test_multi_agent_orchestration_and_rescue_trail(self):
+        result = plan_journey(QUERY, today=TODAY)
+        self.assertIn("orchestration_trail", result)
+        self.assertEqual(len(result["orchestration_trail"]), 5)
+        agents = [step["agent"] for step in result["orchestration_trail"]]
+        self.assertEqual(agents, ["TravelPlannerAgent", "PredictionAgent", "SupervisorAgent", "RescueAgent", "GovernanceAgent"])
+        self.assertIsNotNone(result["disruption_rescue"])
+        self.assertEqual(result["disruption_rescue"]["rescue_train"], "Demo Pune Delhi D")
+        self.assertIn("Demo Pune Delhi A", result["disruption_rescue"]["disrupted_trains"])
+
+    def test_balanced_recommendation_and_station_details(self):
+        balanced = historical_search("PUNE", "RTM", sort="balanced")
+        self.assertEqual(balanced["sort_used"], "balanced")
+        self.assertTrue(all("balanced_score" in item for item in balanced["schedule_only"]))
+        details = station_details("PUNE")
+        self.assertEqual(details["code"], "PUNE")
+        self.assertGreater(details["timetable_stops_passing_through"], 50)
+        self.assertEqual(resolve_station("hyderabad"), "HYB")
+        self.assertEqual(resolve_station("patna"), "PNBE")
+        self.assertEqual(resolve_station("ahmedabad"), "ADI")
+
+    def test_confirmation_brier_score_and_calibration(self):
+        eval_result = evaluate_confirmation_model()
+        self.assertGreater(eval_result["samples"], 0)
+        self.assertIsNotNone(eval_result["brier_score"])
+        self.assertTrue(0 <= eval_result["brier_score"] <= 1)
+        self.assertIn("1-5", eval_result["calibration_by_wl_bucket"])
+
+    def test_expanded_support_policies_and_abstention_tracking(self):
+        tatkal = support_answer("What are the Tatkal booking timings?")
+        self.assertTrue(tatkal["grounded"])
+        self.assertIn("10:00 AM", tatkal["answer"])
+        tatkal_hi = support_answer("तत्काल टिकट नियम", language="hi")
+        self.assertTrue(tatkal_hi["grounded"])
+        rac = support_answer("Explain RAC berth rules")
+        self.assertTrue(rac["grounded"])
+        self.assertIn("shared", rac["answer"].lower())
+        luggage = support_answer("What is the free luggage allowance for 3AC?")
+        self.assertTrue(luggage["grounded"])
+        self.assertIn("40", luggage["answer"])
+        senior = support_answer("Is there a senior citizen concession?")
+        self.assertTrue(senior["grounded"])
+        unknown = support_answer("What is the temperature on Jupiter?")
+        self.assertFalse(unknown["grounded"])
+        self.assertIn("abstained", unknown["governance_alert"])
+
+    def test_bot_velocity_and_fraud_triage(self):
+        bot = fraud_assessment({
+            "bookings_last_10_minutes": 6,
+            "failed_logins_last_hour": 1,
+            "payment_mismatch": False,
+            "queries_last_minute": 45,
+            "booking_speed_seconds": 1.2,
+        })
+        self.assertEqual(bot["level"], "high")
+        self.assertTrue(any("scraper" in signal for signal in bot["signals"]))
+        self.assertTrue(any("sub-3-second" in signal for signal in bot["signals"]))
+
+    def test_live_pnr_and_seats_adapters(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaises(live_railway.LiveServiceUnavailable):
+                live_railway.search_live_pnr("1234567890")
+            with self.assertRaises(live_railway.LiveServiceUnavailable):
+                live_railway.search_live_seats("12345", "2026-10-20", "SL")
+        class MockPnrResponse:
+            def __enter__(self): return self
+            def __exit__(self, *_): return None
+            def read(self, _limit):
+                return json.dumps({
+                    "pnr": "1234567890", "train_no": "12345", "train_name": "Test Express",
+                    "status": "CONFIRMED", "chart_prepared": True, "as_of": "2026-10-15T12:00:00+05:30"
+                }).encode()
+        with patch.dict("os.environ", {"RAILWAY_LIVE_API_URL": "https://provider.example/live", "RAILWAY_LIVE_API_TOKEN": "secret"}), \
+             patch("live_railway.urlopen", return_value=MockPnrResponse()):
+            pnr_res = live_railway.search_live_pnr("1234567890")
+            self.assertEqual(pnr_res["status"], "CONFIRMED")
+            self.assertTrue(pnr_res["chart_prepared"])
+
+    def test_security_headers_and_extended_endpoints(self):
+        def call(path, body=None):
+            handler = object.__new__(Handler)
+            handler.path = path
+            handler.headers = {"Cookie": ""}
+            handler.wfile = io.BytesIO()
+            headers_sent = {}
+            status = []
+            handler.send_response = lambda code: status.append(code)
+            handler.send_header = lambda k, v: headers_sent.setdefault(k, v)
+            handler.end_headers = lambda: None
+            if body is None:
+                handler.do_GET()
+            else:
+                raw = json.dumps(body).encode("utf-8")
+                handler.headers = {"Content-Length": str(len(raw))}
+                handler.rfile = io.BytesIO(raw)
+                handler.do_POST()
+            return status[0], json.loads(handler.wfile.getvalue()), headers_sent
+
+        with patch("app.session_role", return_value="user"), patch("app.audit"):
+            status, res, headers = call("/api/station-details?code=PUNE")
+            self.assertEqual(status, 200)
+            self.assertEqual(res["code"], "PUNE")
+            self.assertEqual(headers.get("X-Frame-Options"), "DENY")
+            self.assertEqual(headers.get("X-Content-Type-Options"), "nosniff")
+            self.assertIn("Content-Security-Policy", headers)
+            with patch.dict("os.environ", {}, clear=True):
+                status, res, _ = call("/api/live-pnr", {"pnr": "1234567890"})
+                self.assertEqual(status, 503)
+                status, res, _ = call("/api/live-seats", {"train_no": "12345", "travel_date": "2026-10-20", "class": "SL"})
+                self.assertEqual(status, 503)
 
 
 if __name__ == "__main__":

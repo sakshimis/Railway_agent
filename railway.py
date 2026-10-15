@@ -58,16 +58,26 @@ def parse_request(text: str, today: date | None = None) -> dict:
         raise ValueError("The journey date cannot be in the past.")
     budget = re.search(r"\b(?:under|below|within)\s*(?:₹|rs\.?\s*)?([\d,]+)(?![\d,]|\s*(?:hours?|hrs?)\b)", text, re.I)
     deadline = re.search(r"\b(?:before|by)\s+(\d{1,2}(?::\d{2})?)\s*(AM|PM)?\b", text, re.I)
-    klass = re.search(r"\b(sleeper|3ac|2ac|1ac|chair car)\b", text, re.I)
+    klass = re.search(r"\b(sleeper|3ac|2ac|1ac|chair car|chair|cc|2s|second sitting)\b", text, re.I)
     duration = re.search(r"\b(?:within|under|max(?:imum)?)\s+(\d{1,2})\s*(?:hours?|hrs?)\b", text, re.I)
-    preference = "fastest" if re.search(r"\b(?:fastest|quickest)\b", text, re.I) else "cheapest"
+    if re.search(r"\b(?:fastest|quickest)\b", text, re.I):
+        preference = "fastest"
+    elif re.search(r"\b(?:balanced|smart|recommended|best)\b", text, re.I):
+        preference = "balanced"
+    else:
+        preference = "cheapest"
+    norm_class = None
+    if klass:
+        raw_k = klass.group(1).lower()
+        class_map = {"chair": "CHAIR CAR", "cc": "CHAIR CAR", "second sitting": "2S", "sleeper": "SLEEPER"}
+        norm_class = class_map.get(raw_k, raw_k.upper())
     return {
         "origin": route.group(1).strip().title(),
         "destination": route.group(2).strip().title(),
         "date": travel_date.isoformat(),
         "budget": int(budget.group(1).replace(",", "")) if budget else None,
         "arrive_before": parse_clock(deadline.group(1), deadline.group(2)).strftime("%H:%M") if deadline else None,
-        "class": klass.group(1).upper() if klass else None,
+        "class": norm_class,
         "maximum_duration_hours": int(duration.group(1)) if duration else None,
         "preference": preference,
         "original_text": text,
@@ -165,17 +175,65 @@ def confirmation_prediction(wl_position: int, days_before: int, travel_class: st
     }
 
 
+def evaluate_confirmation_model() -> dict:
+    """Evaluate synthetic confirmation model using Brier score and bucketed calibration."""
+    rows = read_csv("confirmation_history.csv")
+    if not rows:
+        return {"samples": 0, "brier_score": None, "calibration_by_wl_bucket": {}}
+    brier_sum = 0.0
+    buckets = {"1-5": {"pred_sum": 0.0, "actual_sum": 0, "n": 0},
+               "6-15": {"pred_sum": 0.0, "actual_sum": 0, "n": 0},
+               "16+": {"pred_sum": 0.0, "actual_sum": 0, "n": 0}}
+    for row in rows:
+        try:
+            wl = int(row["wl_position"])
+            days = int(row["days_before"])
+            actual = int(row["confirmed"])
+            klass = row["class"]
+            pred = confirmation_prediction(wl, days, klass)["confirmation_probability"]
+            brier_sum += (pred - actual) ** 2
+            b_key = "1-5" if wl <= 5 else "6-15" if wl <= 15 else "16+"
+            buckets[b_key]["pred_sum"] += pred
+            buckets[b_key]["actual_sum"] += actual
+            buckets[b_key]["n"] += 1
+        except Exception:
+            continue
+    total_n = len(rows)
+    brier = round(brier_sum / total_n, 4) if total_n else None
+    calibration = {}
+    for key, data in buckets.items():
+        if data["n"] > 0:
+            calibration[key] = {
+                "sample_count": data["n"],
+                "avg_predicted_probability": round(data["pred_sum"] / data["n"], 3),
+                "empirical_confirmation_rate": round(data["actual_sum"] / data["n"], 3),
+            }
+    return {
+        "samples": total_n,
+        "brier_score": brier,
+        "calibration_by_wl_bucket": calibration,
+        "synthetic_notice": "Evaluated on synthetic confirmation history; real IRCTC chart outcomes not connected.",
+    }
+
+
 def fare_prediction(train: dict, days_before: int) -> dict:
     if days_before < 0:
         raise ValueError("Days before departure cannot be negative.")
     demand = train["demand_index"]
     change = 0.04 + demand * 0.12 + (0.04 if days_before < 7 else 0)
     predicted = round(train["fare"] * (1 + change))
+    trajectory = {
+        "30_days_prior": round(train["fare"] * (1 + demand * 0.05)),
+        "15_days_prior": round(train["fare"] * (1 + demand * 0.10)),
+        "7_days_prior": round(train["fare"] * (1 + demand * 0.14)),
+        "1_day_prior": round(train["fare"] * (1 + demand * 0.20 + 0.06)),
+    }
     return {
         "current_fare": train["fare"],
         "illustrative_later_fare": predicted,
         "demand_level": "high" if demand >= 0.75 else "moderate" if demand >= 0.4 else "low",
         "booking_window": "Book soon if the itinerary is suitable" if demand >= 0.65 else "Compare again before booking",
+        "illustrative_fare_trajectory": trajectory,
         "explanation": "Synthetic demand-based scenario; this is not an actual quoted fare.",
         "model_version": "fare-scenario-demo-v1",
     }
@@ -290,6 +348,17 @@ def plan_journey(text: str, scenario: dict | None = None, today: date | None = N
 
     if request["preference"] == "fastest":
         approved.sort(key=lambda item: (item["journey_duration_minutes"], item["fare"]))
+    elif request["preference"] == "balanced":
+        min_f = min((item["fare"] for item in approved), default=1)
+        max_f = max((item["fare"] for item in approved), default=1)
+        min_d = min((item["journey_duration_minutes"] for item in approved), default=1)
+        max_d = max((item["journey_duration_minutes"] for item in approved), default=1)
+        for item in approved:
+            fn = (item["fare"] - min_f) / (max_f - min_f) if max_f > min_f else 0.0
+            dn = (item["journey_duration_minutes"] - min_d) / (max_d - min_d) if max_d > min_d else 0.0
+            deln = min(1.0, max(0.0, item["assumed_delay_minutes"] / 60.0))
+            item["balanced_score"] = round(0.45 * fn + 0.35 * dn + 0.20 * deln, 3)
+        approved.sort(key=lambda item: (item["balanced_score"], item["journey_duration_minutes"]))
     else:
         approved.sort(key=lambda item: (item["fare"], item["journey_duration_minutes"]))
     selected = approved[0] if approved else None
@@ -304,12 +373,35 @@ def plan_journey(text: str, scenario: dict | None = None, today: date | None = N
         reason = ("A cheaper train may miss your arrival deadline; this option meets it."
                   if cheaper_rejected else
                   "Shortest journey among suitable options." if request["preference"] == "fastest" else
+                  "Optimal balance of fare, journey time, and historical punctuality." if request["preference"] == "balanced" else
                   "Lowest fare among suitable options.")
     passenger_alerts = []
     if selected and selected["assumed_delay_minutes"] >= 60:
         passenger_alerts.append("This sample train may arrive at least one hour late. Check live running status before travel.")
     if selected and selected["delay_source"] == "what-if override":
         passenger_alerts.append("Arrival time includes a delay you simulated, not a live railway update.")
+
+    rescue_info = None
+    if cheaper_rejected and selected:
+        disrupted_names = [
+            d["train"] for d in decisions
+            if d["status"] in {"rejected", "blocked"} and any("deadline" in r for r in d["reasons"])
+        ]
+        rescue_info = {
+            "disrupted_trains": disrupted_names,
+            "rescue_train": selected["train"],
+            "reason": f"Disrupted option(s) ({', '.join(disrupted_names)}) miss arrival deadline due to simulated/predicted delay. Agent selected {selected['train']} as rescue recommendation.",
+            "strategy": "arrival_deadline_compliance",
+        }
+
+    orchestration_trail = [
+        {"agent": "TravelPlannerAgent", "action": f"Parsed query: {request['origin']} -> {request['destination']} on {request['date']}", "status": "completed"},
+        {"agent": "PredictionAgent", "action": f"Enriched {len(route_trains)} candidate trains with delay, confirmation and fare outlook", "status": "completed"},
+        {"agent": "SupervisorAgent", "action": f"Verified constraints: {len(approved)} approved, {len(decisions) - len(approved)} blocked/rejected", "status": "completed"},
+        {"agent": "RescueAgent", "action": rescue_info["reason"] if rescue_info else "No disruption rescue triggered; primary candidate meets constraints", "status": "active" if rescue_info else "standby"},
+        {"agent": "GovernanceAgent", "action": f"Applied safety boundaries and generated {len(alerts)} governance alerts", "status": "completed"},
+    ]
+
     return {
         "request": request, "selected": selected, "alternatives": approved[1:],
         "decisions": decisions, "recommendation_reason": reason,
@@ -319,6 +411,9 @@ def plan_journey(text: str, scenario: dict | None = None, today: date | None = N
         ),
         "governance_alerts": sorted(set(alerts)),
         "passenger_alerts": passenger_alerts,
+        "disruption_rescue": rescue_info,
+        "orchestration_trail": orchestration_trail,
+        "agent_architecture": "Multi-agent: PlannerAgent -> PredictionAgent -> SupervisorAgent -> RescueAgent -> GovernanceAgent",
         "booking": {"status": "approval required", "action": "preview only; no ticket is purchased"},
         "data_notice": "All railway records, labels, PNRs, and delays are synthetic demonstration data.",
     }
@@ -350,13 +445,25 @@ def support_answer(question: str, language: str = "en") -> dict:
         return {"answer": f"Demo PNR status: {result.get('status')}. {result.get('message', '')}".strip(),
                 "source": "synthetic PNR dataset", "grounded": True}
     policies = read_json("policies.json")
-    key = "refund" if any(word in lower for word in ("refund", "रिफंड")) else (
-        "cancellation" if any(word in lower for word in ("cancel", "रद्द")) else None
-    )
-    if key:
+    key = None
+    if any(w in lower for w in ("refund", "रिफंड")):
+        key = "refund"
+    elif any(w in lower for w in ("cancel", "रद्द")):
+        key = "cancellation"
+    elif any(w in lower for w in ("tatkal", "तत्काल")):
+        key = "tatkal"
+    elif any(w in lower for w in ("rac", "आरएसी")):
+        key = "rac"
+    elif any(w in lower for w in ("luggage", "सामान", "baggage")):
+        key = "luggage"
+    elif any(w in lower for w in ("senior", "वरिष्ठ", "concession", "रियायत")):
+        key = "senior_citizen"
+
+    if key and key in policies:
         item = policies[key]
         answer = item["hi"] if language.lower().startswith("hi") else item["en"]
         return {"answer": answer, "source": item["source"], "grounded": True,
+                "policy_topic": key,
                 "notice": "Demo policy summary. Verify current rules with the official operator."}
     return {"answer": "I cannot verify that answer from the connected demo sources. Please use an official railway service.",
             "source": None, "grounded": False, "governance_alert": "unsupported question; abstained"}
@@ -367,7 +474,9 @@ def fraud_assessment(events: dict) -> dict:
     attempts = int(events.get("bookings_last_10_minutes", 0))
     failed = int(events.get("failed_logins_last_hour", 0))
     mismatch = bool(events.get("payment_mismatch", False))
-    if attempts < 0 or failed < 0:
+    query_velocity = int(events.get("queries_last_minute", 0))
+    booking_speed = float(events.get("booking_speed_seconds", 30))
+    if attempts < 0 or failed < 0 or query_velocity < 0 or booking_speed < 0:
         raise ValueError("Counts cannot be negative.")
     reasons = []
     score = min(45, attempts * 5) + min(25, failed * 5) + (30 if mismatch else 0)
@@ -377,7 +486,20 @@ def fraud_assessment(events: dict) -> dict:
         reasons.append("repeated failed logins")
     if mismatch:
         reasons.append("payment information mismatch")
-    return {"risk_score": min(100, score), "level": "high" if score >= 70 else "medium" if score >= 35 else "low",
-            "signals": reasons, "action": "human review" if score >= 70 else "monitor",
-            "explanation": "Transparent demo rule score; not a finding of fraud.",
-            "model_version": "fraud-rules-demo-v1"}
+    if query_velocity >= 30:
+        score += 20
+        reasons.append("abnormal search query velocity (potential scraper bot)")
+    if booking_speed < 3 and attempts >= 1:
+        score += 25
+        reasons.append("sub-3-second automated form completion (potential script/bot)")
+    total_score = min(100, score)
+    level = "high" if total_score >= 70 else "medium" if total_score >= 35 else "low"
+    action = "human review" if total_score >= 70 else "challenge_verification" if total_score >= 35 else "monitor"
+    return {
+        "risk_score": total_score,
+        "level": level,
+        "signals": reasons,
+        "action": action,
+        "explanation": "Transparent demo rule score; not a finding of fraud.",
+        "model_version": "fraud-rules-demo-v2",
+    }

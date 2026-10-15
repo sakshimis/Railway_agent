@@ -8,5 +8,25 @@
     "en": "Cancellation conditions vary by ticket and timing. Check the official booking service for the applicable rule and any charge.",
     "hi": "रद्द करने की शर्तें टिकट और समय के अनुसार बदलती हैं। लागू नियम और शुल्क के लिए आधिकारिक बुकिंग सेवा देखें।",
     "source": "demo policy knowledge base"
+  },
+  "tatkal": {
+    "en": "Tatkal booking opens at 10:00 AM for AC classes and 11:00 AM for non-AC classes one day prior to journey date. Confirmed Tatkal tickets are non-refundable upon cancellation.",
+    "hi": "तत्काल बुकिंग यात्रा की तारीख से एक दिन पहले एसी श्रेणियों के लिए सुबह 10:00 बजे और गैर-एसी श्रेणियों के लिए 11:00 बजे खुलती है। कन्फर्म तत्काल टिकट रद्द करने पर रिफंड नहीं मिलता है।",
+    "source": "demo policy knowledge base"
+  },
+  "rac": {
+    "en": "RAC (Reservation Against Cancellation) grants passenger travel entitlement with a shared berth. If confirmed ticket passengers cancel, RAC tickets are automatically upgraded to confirmed status based on priority.",
+    "hi": "आरएसी (Reservation Against Cancellation) यात्री को साझा सीट के साथ यात्रा का अधिकार देता है। यदि कन्फर्म टिकट वाले यात्री रद्द करते हैं, तो आरएसी टिकट प्राथमिकता के आधार पर स्वतः कन्फर्म हो जाते हैं।",
+    "source": "demo policy knowledge base"
+  },
+  "luggage": {
+    "en": "Free luggage allowances by class: First AC (1A) up to 70 kg, Second AC (2A) up to 50 kg, Third AC (3A) and Chair Car (CC) up to 40 kg, Sleeper (SL) up to 40 kg. Excess luggage must be booked at the parcel office.",
+    "hi": "श्रेणी के अनुसार निःशुल्क सामान छूट: प्रथम एसी (1A) 70 किग्रा तक, द्वितीय एसी (2A) 50 किग्रा तक, तृतीय एसी (3A) और चेयर कार (CC) 40 किग्रा तक, स्लीपर (SL) 40 किग्रा तक। अतिरिक्त सामान पार्सल कार्यालय में बुक किया जाना चाहिए।",
+    "source": "demo policy knowledge base"
+  },
+  "senior_citizen": {
+    "en": "Senior citizen fare concessions remain suspended in standard ticketing; only designated medical and disability concessions are active upon certified verification.",
+    "hi": "सामान्य टिकटिंग में वरिष्ठ नागरिक किराया रियायतें निलंबित हैं; केवल प्रमाणित चिकित्सा और दिव्यांग रियायतें सत्यापन के बाद सक्रिय हैं।",
+    "source": "demo policy knowledge base"
   }
 }

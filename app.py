@@ -20,8 +20,12 @@ from railway import (
     plan_journey, parse_request, pnr_status, read_json, refund_status, support_answer,
 )
 from historical import (search as historical_search, stations as historical_stations,
-                        report as kaggle_report, train_on_route)
-from live_railway import LiveServiceUnavailable, configured as live_configured, search_live
+                        report as kaggle_report, station_details as historical_station_details,
+                        train_on_route)
+from live_railway import (
+    LiveServiceUnavailable, configured as live_configured, search_live,
+    search_live_pnr, search_live_seats,
+)
 
 WEB = ROOT / "web"
 ITINERARIES = ROOT / "runtime" / "itineraries.jsonl"
@@ -48,6 +52,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.end_headers()
         self.wfile.write(raw)
 
@@ -57,6 +65,15 @@ class Handler(BaseHTTPRequestHandler):
             if not self.require_role(): return
             query = parse_qs(urlparse(self.path).query).get("q", [""])[0]
             return self.send_json(200, historical_stations(query))
+        if path == "/api/station-details":
+            if not self.require_role(): return
+            code = parse_qs(urlparse(self.path).query).get("code", [""])[0]
+            if not code:
+                return self.send_json(400, {"error": "Provide a station code."})
+            try:
+                return self.send_json(200, historical_station_details(code))
+            except ValueError as exc:
+                return self.send_json(404, {"error": str(exc)})
         if path == "/api/session":
             return self.send_json(200, {"role": self.role(), "configured": ACCOUNTS.exists()})
         if path == "/api/live-status":
@@ -83,6 +100,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", mime + "; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(raw)
@@ -166,6 +186,20 @@ class Handler(BaseHTTPRequestHandler):
                                                "destination_code": result["destination"],
                                                "matching_trains": len(result["trains"])},
                       round((time.perf_counter() - started) * 1000))
+            elif path == "/api/live-pnr":
+                result = search_live_pnr(str(body.get("pnr", "")))
+                audit("live_pnr_checked", {"pnr_status": result["status"]},
+                      round((time.perf_counter() - started) * 1000))
+            elif path == "/api/live-seats":
+                result = search_live_seats(
+                    str(body.get("train_no", "")),
+                    str(body.get("travel_date", "")),
+                    str(body.get("class", "")),
+                    str(body.get("origin", "")),
+                    str(body.get("destination", "")),
+                )
+                audit("live_seats_checked", {"train_no": result["train_no"], "availability": result["availability"]},
+                      round((time.perf_counter() - started) * 1000))
             elif path == "/api/confirmation":
                 result = confirmation_prediction(int(body["wl_position"]),
                                                  int(body["days_before"]),
@@ -225,10 +259,28 @@ class Handler(BaseHTTPRequestHandler):
                                if item and item["train_id"] == body.get("train_id")), None)
                 if not choice:
                     raise ValueError("The selected train is no longer a suitable demo option.")
+                p_name = str(body.get("passenger_name", "Demo Traveler")).strip()[:60] or "Demo Traveler"
+                try:
+                    p_age = int(body.get("passenger_age", 30))
+                    if not 1 <= p_age <= 120:
+                        p_age = 30
+                except (ValueError, TypeError):
+                    p_age = 30
+                b_pref = str(body.get("berth_preference", "No preference")).strip()[:25] or "No preference"
                 reference = "DEMO-" + secrets.token_hex(4).upper()
-                saved = {"reference": reference, "train": choice["train"],
-                         "departure": choice["departure"], "fare": choice["fare"],
-                         "status": "saved itinerary only; no ticket or payment"}
+                saved = {
+                    "reference": reference,
+                    "train": choice["train"],
+                    "departure": choice["departure"],
+                    "fare": choice["fare"],
+                    "passenger": {
+                        "name": p_name,
+                        "age": p_age,
+                        "berth_preference": b_pref,
+                    },
+                    "status": "saved itinerary only; no ticket or payment",
+                    "boundary_notice": "Educational prototype boundary. No live IRCTC booking occurred and no funds were charged."
+                }
                 ITINERARIES.parent.mkdir(parents=True, exist_ok=True)
                 with ITINERARY_LOCK:
                     with ITINERARIES.open("a", encoding="utf-8") as handle:

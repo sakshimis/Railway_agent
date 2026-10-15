@@ -48,7 +48,7 @@
           <label for="travel-class">Travel class</label><select id="travel-class"><option value="">All classes</option><option>SL</option><option>3A</option><option>2A</option><option>1A</option><option>CC</option><option>2S</option></select>
           <label for="max-fare">Maximum historical fare (₹, optional)</label><input id="max-fare" type="number" min="1" placeholder="No limit">
           <label for="max-duration">Maximum scheduled journey (hours, optional)</label><input id="max-duration" type="number" min="1" max="168" placeholder="No limit">
-          <label for="sort">Sort results</label><select id="sort"><option value="fare">Lowest historical fare or estimated fare</option><option value="duration">Shortest scheduled journey</option><option value="departure">Earliest departure</option></select>
+          <label for="sort">Sort results</label><select id="sort"><option value="balanced">Best value / balanced recommendation (fare, duration &amp; delay)</option><option value="fare">Lowest historical fare or estimated fare</option><option value="duration">Shortest scheduled journey</option><option value="departure">Earliest departure</option></select>
           <button type="submit" class="primary">Find trains →</button>
       </form>
       <div id="live-result" class="result" aria-live="polite"></div>
