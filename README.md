@@ -1,8 +1,12 @@
-# Railway AI case-study prototype
+# Railway AI: case-study submission
 
-> Educational prototype with historical and synthetic data. It is not a live railway service. See [the case-study checklist](REQUIREMENTS.md), [data sources](DATA_SOURCES.md), and [GitHub publishing steps](GITHUB_SETUP.md).
+An end-to-end **local demonstration** of the *AI-Powered Intelligent Railway Travel & Autonomous AI Governance Platform* case study. It includes a passenger journey planner, separate user/admin login, historical data processing, delay and fare estimates, agent decision traces, and an administrator governance dashboard. See the [requirement-by-requirement status](REQUIREMENTS.md) and [data sources](DATA_SOURCES.md).
 
-For submission, follow [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) and present with [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Source repository: https://github.com/sakshimis/Railway_agent.
+## Placement submission
+
+The placement notice asks students to submit the **GitHub repository link** through the Google Form when it is shared, by **16 October 2026, 10:00 AM**. Repository: https://github.com/sakshimis/Railway_agent. The repository link is the requested submission item; the local demo URL below works only on the computer running the app. Use [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for a walkthrough and [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) for setup and presentation notes.
+
+**Scope and limitations:** This is an educational prototype, not an operational railway service. Search results use historical Kaggle snapshots and model estimates. The live API endpoints are integration points, but there is no authorized live provider connected, so current fares, seats and PNR cannot be returned. Booking/payment, live disruption alerts, real confirmation outcomes and production-scale governance are not implemented. The PostgreSQL schema is a proposed design; the running app uses SQLite and local files. Do not use the demo to make real travel or booking decisions.
 
 This local Python web app separates passenger and administrator roles. Passenger route search uses a public Kaggle **historical snapshot**, while the admin area holds synthetic agent scenarios, model demonstrations, governance and audit. It is an educational prototype, not a live railway booking service.
 
@@ -46,4 +50,4 @@ Local login limits five failed attempts per account and client within 15 minutes
 
 ## Why the database cannot show every fare
 
-The Kaggle files are snapshots with different coverage: the timetable includes station pairs for which the fare file has no price row. The distance model fills those gaps only as a research estimate; it cannot verify a train's offered class, current fare, seat availability or service on a selected date. A live in-app feed would require an authorized railway data integration. Until one is available, use the official enquiry links for real travel decisions.
+The Kaggle files are snapshots with different coverage: the timetable includes station pairs for which the fare file has no price row. The distance model fills those gaps only as a research estimate; it cannot verify a train's offered class, current fare, seat availability or service on a selected date. A live in-app feed would require an authorized railway data integration. For real travel decisions, verify details through an official railway service.
