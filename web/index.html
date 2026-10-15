@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Railway AI • Journey Rescue Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark">↗</span><span>Railway AI<br><small>Journey Rescue Lab</small></span></div>
+    <div class="row"><span id="signed-in" class="pill">Offline case-study demo</span><button id="logout" class="secondary" hidden>Log out</button></div>
+  </header>
+  <section id="login-screen" class="login-screen">
+    <form id="login-form" class="card narrow">
+      <div class="eyebrow">PRIVATE DEMO</div><h1>Sign in</h1>
+      <p class="hint">Use the user or admin account created in the server terminal.</p>
+      <label for="username">Account</label><select id="username"><option value="user">Passenger</option><option value="admin">Administrator</option></select>
+      <label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required>
+      <button class="primary" type="submit">Sign in</button><div id="login-result" aria-live="polite"></div>
+    </form>
+  </section>
+  <main id="workspace" hidden>
+    <section class="hero">
+      <div class="eyebrow">RAILWAY TRAVEL ASSISTANT</div>
+      <h1>Plan your journey.</h1>
+      <p>Explore historical train routes and fares, and use the separate sample passenger services.</p>
+      <div class="notice">Route prices and timetables come from an October 2023 Kaggle snapshot. Delay history is from 2025–26. Neither is live. PNR, refunds and the admin simulation are synthetic. No ticket is booked or charged.</div>
+    </section>
+    <nav class="tabs" aria-label="Demo sections">
+      <button class="tab active" data-tab="planner">Journey planner</button>
+      <button class="tab admin-only" data-tab="predictions">Model lab</button>
+      <button class="tab" data-tab="support">Passenger support</button>
+      <button class="tab admin-only" data-tab="security">Security</button>
+      <button class="tab admin-only" data-tab="governance">Governance</button>
+      <button class="tab admin-only" data-tab="simulation">Scenario lab</button>
+    </nav>
+    <section class="panel active" id="planner">
+      <div class="section-head"><div><div class="eyebrow">01 / HISTORICAL ROUTE SEARCH</div><h2>Journey planner</h2></div><span class="tag">October 2023 snapshot</span></div>
+      <div class="grid two">
+        <form id="history-form" class="card">
+          <label for="quick-query">Or describe a route (optional)</label><input id="quick-query" placeholder="from Pune to Delhi under 1500 sleeper">
+          <p class="hint">A sentence fills route, budget and class for this historical comparison. Travel dates cannot be verified from the snapshot.</p>
+          <label for="origin">From station or code</label><input id="origin" value="PUNE" list="station-list" required>
+          <label for="destination">To station or code</label><input id="destination" value="NDLS" list="station-list" required>
+          <datalist id="station-list"></datalist>
+          <label for="travel-date">Journey date for official check</label><input id="travel-date" type="date" required>
+          <p class="hint">The date is used only for the official fare and seat check. Historical results below do not verify service on that date.</p>
+          <label for="travel-class">Travel class</label><select id="travel-class"><option value="">All classes</option><option>SL</option><option>3A</option><option>2A</option><option>1A</option><option>CC</option><option>2S</option></select>
+          <label for="max-fare">Maximum historical fare (₹, optional)</label><input id="max-fare" type="number" min="1" placeholder="No limit">
+          <label for="max-duration">Maximum scheduled journey (hours, optional)</label><input id="max-duration" type="number" min="1" max="168" placeholder="No limit">
+          <label for="sort">Sort results</label><select id="sort"><option value="fare">Lowest historical fare or estimated fare</option><option value="duration">Shortest scheduled journey</option><option value="departure">Earliest departure</option></select>
+          <p class="hint">Sorting changes the order only when multiple trains match. For estimated fares, select a class; otherwise the fare sort compares Sleeper (SL) estimates.</p>
+          <button type="submit" class="primary">Find historical trains →</button>
+        </form>
+        <div class="card guide">
+          <div class="eyebrow">ABOUT THESE RESULTS</div>
+          <p>The search uses historical fare and timetable records. You can compare classes, fares and scheduled journey times.</p>
+          <p>The listed trains may not run on your travel date. Use the official check below for the current fare and seat availability.</p>
+          <a class="official-link" href="https://www.indianrail.gov.in/enquiry/FARE/FareEnquiry.html?locale=en" target="_blank" rel="noopener noreferrer">Open Indian Railways fare enquiry ↗</a>
+          <p class="hint">Try PUNE → NDLS, or enter a station name or code. The admin area contains a separate agent simulation with decision trails.</p>
+        </div>
+      </div>
+      <div id="history-result" class="result" aria-live="polite"></div>
+    </section>
+    <section class="panel admin-only" id="predictions">
+      <div class="section-head"><div><div class="eyebrow">02 / MODEL RESEARCH</div><h2>Model lab</h2></div><span class="tag">Admin only</span></div>
+      <p class="notice">These two controls use synthetic demonstration models. The Kaggle confirmation dataset was excluded from passenger prediction because none of its 10,053 usable wait-list rows ended confirmed. Its current-status field also reveals much of the outcome. The fare snapshot has only one month, so a future fare trend cannot be validated.</p>
+      <div class="grid two">
+        <form id="confirmation-form" class="card">
+          <h3>WL / RAC confirmation</h3>
+          <label for="wl">Waiting-list position</label><input id="wl" type="number" min="0" value="4">
+          <label for="days">Days before departure</label><input id="days" type="number" min="0" value="7">
+          <label for="class">Class</label><select id="class"><option>SLEEPER</option><option>3AC</option><option>CHAIR CAR</option></select>
+          <button type="submit" class="primary">Estimate status →</button>
+          <div id="confirmation-result" class="mini-result" aria-live="polite"></div>
+        </form>
+        <form id="fare-form" class="card">
+          <h3>Illustrative fare scenario</h3>
+          <label for="fare-train">Demo train</label><select id="fare-train"></select>
+          <label for="fare-days">Days before departure</label><input id="fare-days" type="number" min="0" value="7">
+          <button type="submit" class="primary">Estimate fare scenario →</button>
+          <div id="fare-result" class="mini-result" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+    <section class="panel" id="support">
+      <div class="section-head"><div><div class="eyebrow">03 / GROUNDED ASSISTANCE</div><h2>Passenger support</h2></div><span class="tag">Abstains when sources are missing</span></div>
+      <div class="grid two">
+        <form id="support-form" class="card">
+          <h3>Ask a question</h3>
+          <label for="support-question">Question</label><input id="support-question" value="How does a refund work?">
+          <label for="language">Language</label><select id="language"><option value="en">English</option><option value="hi">Hindi</option></select>
+          <button type="submit" class="primary">Ask assistant →</button>
+          <div id="support-result" class="mini-result" aria-live="polite"></div>
+        </form>
+        <form id="pnr-form" class="card">
+          <h3>Sample PNR lookup</h3>
+          <label for="pnr">10-digit sample PNR</label><input id="pnr" value="1234567890" inputmode="numeric">
+          <p class="hint">Try 1234567890 or 9876543210. Real PNRs are not connected.</p>
+          <button type="submit" class="primary">Look up sample →</button>
+          <div id="pnr-result" class="mini-result" aria-live="polite"></div>
+        </form>
+      </div>
+      <form id="refund-form" class="card narrow" style="margin-top:18px">
+        <h3>Sample refund tracking</h3>
+        <label for="refund-reference">Demo refund reference</label><input id="refund-reference" value="DEMO-R1001">
+        <p class="hint">Sample references: DEMO-R1001 and DEMO-R1002. No real payments are connected.</p>
+        <button type="submit" class="primary">Check sample refund →</button>
+        <div id="refund-result" class="mini-result" aria-live="polite"></div>
+      </form>
+    </section>
+    <section class="panel admin-only" id="security">
+      <div class="section-head"><div><div class="eyebrow">04 / RISK TRIAGE</div><h2>Security signals</h2></div><span class="tag">Human review for high risk</span></div>
+      <form id="fraud-form" class="card narrow">
+        <label for="bookings">Bookings in the last 10 minutes</label><input id="bookings" type="number" min="0" value="7">
+        <label for="failed">Failed logins in the last hour</label><input id="failed" type="number" min="0" value="3">
+        <label class="check"><input id="mismatch" type="checkbox" checked> Payment information mismatch</label>
+        <button type="submit" class="primary">Assess risk →</button>
+        <div id="fraud-result" class="mini-result" aria-live="polite"></div>
+      </form>
+    </section>
+    <section class="panel admin-only" id="governance">
+      <div class="section-head"><div><div class="eyebrow">05 / AI-FOR-AI</div><h2>Governance control room</h2></div><button id="refresh-governance" class="secondary">Refresh report</button></div>
+      <div class="grid two">
+        <div class="card"><h3>Model health and alerts</h3><div id="governance-result" class="mini-result"></div></div>
+        <div class="card">
+          <h3>Lifecycle simulation</h3>
+          <p class="hint">Evaluate a candidate on held-out synthetic examples. Only an authenticated admin can approve a change.</p>
+          <button id="candidate" class="secondary">Evaluate retraining candidate</button>
+          <label class="check"><input id="approve" type="checkbox"> I approve this demo action</label>
+          <div class="row"><button id="promote" class="secondary">Promote candidate</button><button id="rollback" class="secondary">Rollback</button></div>
+          <div id="lifecycle-result" class="mini-result" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="card audit-card"><h3>Kaggle data and evaluation</h3><div id="data-report"></div></div>
+      <div class="card audit-card"><div class="section-head"><h3>Recent audit events</h3><button id="refresh-audit" class="secondary">Refresh</button></div><div id="audit-result"></div></div>
+    </section>
+    <section class="panel admin-only" id="simulation">
+      <div class="section-head"><div><div class="eyebrow">06 / AGENT SCENARIO</div><h2>Journey rescue simulation</h2></div><span class="tag">Synthetic demonstration</span></div>
+      <form id="plan-form" class="card narrow">
+        <label for="query">Describe a sample journey</label><textarea id="query" rows="3">I want to travel from Pune to Delhi tomorrow under 1500 and arrive before 10:00 AM</textarea>
+        <label for="delay">What-if delay for Demo Train A (minutes)</label><input id="delay" type="number" min="0" max="600" value="90">
+        <button type="submit" class="primary">Run scenario →</button>
+      </form>
+      <div id="plan-result" class="result" aria-live="polite"></div>
+    </section>
+  </main>
+  <footer>Built for learning and evaluation. Verify any real travel or policy information with official services.</footer>
+</body>
+</html>

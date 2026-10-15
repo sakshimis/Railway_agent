@@ -1,0 +1,4 @@
+{
+  "DEMO-R1001": {"status": "processing", "message": "Sample refund request received; no real payment was made."},
+  "DEMO-R1002": {"status": "completed", "message": "Sample refund completed in this fictional dataset."}
+}

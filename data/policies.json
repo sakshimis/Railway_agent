@@ -1,0 +1,12 @@
+{
+  "refund": {
+    "en": "Refund eligibility depends on ticket type, status, and cancellation time. Review the current official rules before acting.",
+    "hi": "रिफंड की पात्रता टिकट के प्रकार, स्थिति और रद्द करने के समय पर निर्भर करती है। कृपया वर्तमान आधिकारिक नियम देखें।",
+    "source": "demo policy knowledge base"
+  },
+  "cancellation": {
+    "en": "Cancellation conditions vary by ticket and timing. Check the official booking service for the applicable rule and any charge.",
+    "hi": "रद्द करने की शर्तें टिकट और समय के अनुसार बदलती हैं। लागू नियम और शुल्क के लिए आधिकारिक बुकिंग सेवा देखें।",
+    "source": "demo policy knowledge base"
+  }
+}

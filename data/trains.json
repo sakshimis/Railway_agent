@@ -1,0 +1,7 @@
+[
+  {"id":"DEMO-A","name":"Demo Pune Delhi A","origin":"Pune","destination":"Delhi","departure":"17:00","arrival":"09:00","arrival_day_offset":1,"class":"SLEEPER","fare":1200,"seats":6,"wl_position":0,"demand_index":0.72},
+  {"id":"DEMO-B","name":"Demo Pune Delhi B","origin":"Pune","destination":"Delhi","departure":"18:00","arrival":"08:30","arrival_day_offset":1,"class":"3AC","fare":1700,"seats":0,"wl_position":4,"demand_index":0.82},
+  {"id":"DEMO-C","name":"Demo Pune Delhi C","origin":"Pune","destination":"Delhi","departure":"16:30","arrival":"11:00","arrival_day_offset":1,"class":"SLEEPER","fare":1400,"seats":12,"wl_position":0,"demand_index":0.47},
+  {"id":"DEMO-D","name":"Demo Pune Delhi D","origin":"Pune","destination":"Delhi","departure":"18:30","arrival":"09:20","arrival_day_offset":1,"class":"SLEEPER","fare":1450,"seats":8,"wl_position":0,"demand_index":0.56},
+  {"id":"DEMO-MP","name":"Demo Mumbai Pune","origin":"Mumbai","destination":"Pune","departure":"06:00","arrival":"09:15","arrival_day_offset":0,"class":"CHAIR CAR","fare":540,"seats":22,"wl_position":0,"demand_index":0.51}
+]

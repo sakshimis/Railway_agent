@@ -1,0 +1,52 @@
+{
+  "method": "class-specific linear historical fare estimate",
+  "classes": {
+    "2A": {
+      "intercept": 610.12484,
+      "per_km": 1.215925,
+      "training_rows": 56363,
+      "test_rows": 21557,
+      "test_mae_rupees": 106.0
+    },
+    "3A": {
+      "intercept": 445.588954,
+      "per_km": 0.836775,
+      "training_rows": 58681,
+      "test_rows": 23099,
+      "test_mae_rupees": 75.2
+    },
+    "SL": {
+      "intercept": 134.847593,
+      "per_km": 0.346414,
+      "training_rows": 63906,
+      "test_rows": 26956,
+      "test_mae_rupees": 34.42
+    },
+    "2S": {
+      "intercept": 45.371103,
+      "per_km": 0.293438,
+      "training_rows": 5155,
+      "test_rows": 1117,
+      "test_mae_rupees": 9.01
+    },
+    "CC": {
+      "intercept": 246.943576,
+      "per_km": 0.872598,
+      "training_rows": 5577,
+      "test_rows": 1147,
+      "test_mae_rupees": 42.4
+    },
+    "1A": {
+      "intercept": 945.798599,
+      "per_km": 2.12024,
+      "training_rows": 25004,
+      "test_rows": 7266,
+      "test_mae_rupees": 247.7
+    }
+  },
+  "split": "20% of train numbers held out by stable hash",
+  "training_rows": 214686,
+  "test_rows": 81142,
+  "source_period": "October 2023",
+  "warning": "Estimates are not quoted fares. Class availability and current price are not verified."
+}
