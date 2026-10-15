@@ -208,7 +208,8 @@ class Handler(BaseHTTPRequestHandler):
                 result = search_provider_fare(
                     str(body.get("origin", "")), str(body.get("destination", "")),
                     str(body.get("class", "")), int(body.get("adults", 1)),
-                    int(body.get("children", 0)), str(body.get("quota", "GN")))
+                    int(body.get("children", 0)), str(body.get("quota", "GN")),
+                    str(body.get("travel_date", "")))
                 audit("provider_fare_checked", {"origin_code": result["origin"],
                                                 "destination_code": result["destination"],
                                                 "class": result["class"]},

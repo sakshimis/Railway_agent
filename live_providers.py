@@ -186,7 +186,8 @@ def search_live_schedule(train_no: str) -> dict:
 
 
 def search_provider_fare(origin: str, destination: str, travel_class: str,
-                         adults: int = 1, children: int = 0, quota: str = "GN") -> dict:
+                         adults: int = 1, children: int = 0, quota: str = "GN",
+                         travel_date: str = "") -> dict:
     """Get per-train indicative fares for a route/class (no travel date in API)."""
     if not rapid_configured():
         raise LiveServiceUnavailable("Provider fare enquiry is not connected yet.")
@@ -194,6 +195,8 @@ def search_provider_fare(origin: str, destination: str, travel_class: str,
     if origin == destination:
         raise ValueError("Choose different origin and destination stations.")
     travel_class = _klass(travel_class)
+    if travel_date:
+        _journey_date(travel_date)
     if type(adults) is not int or not 1 <= adults <= 6 or type(children) is not int or not 0 <= children <= 6:
         raise ValueError("Choose 1–6 adults and 0–6 children.")
     quota = str(quota).strip().upper()
@@ -228,7 +231,8 @@ def search_provider_fare(origin: str, destination: str, travel_class: str,
     options.sort(key=lambda row: (row["fare_rupees"], row["train_no"]))
     return {"origin": origin, "destination": destination, "class": travel_class,
             "adults": adults, "children": children, "quota": quota,
-            "trains": options, "count": len(options), "as_of": _now(), "source": provider_name(),
+            "trains": options, "count": len(options), "requested_date": travel_date,
+            "as_of": _now(), "source": provider_name(),
             "provider_note": str(body.get("note") or "")[:400],
             "notice": "Indicative provider fares by train. The request has no travel date; dynamic-fare amounts are base fares, not live ticket prices. Verify before booking."}
 

@@ -67,6 +67,7 @@
         <h3>Compare indicative train fares</h3>
         <p class="hint">The provider returns fares for individual trains on this route. Its request has no travel date, so these are indicative amounts, not current ticket quotes or seat availability.</p>
         <div class="fare-query-grid">
+          <div><label for="fare-date">Travel date</label><input id="fare-date" type="date" required></div>
           <div><label for="fare-origin">From code</label><input id="fare-origin" value="NDLS" maxlength="8" required></div>
           <div><label for="fare-destination">To code</label><input id="fare-destination" value="KYN" maxlength="8" required></div>
           <div><label for="fare-class">Class</label><select id="fare-class"><option>3A</option><option>SL</option><option>2A</option><option>1A</option><option>CC</option><option>2S</option></select></div>

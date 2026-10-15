@@ -3,6 +3,7 @@ let currentRole = null;
 const tomorrow = new Date();
 tomorrow.setDate(tomorrow.getDate() + 1);
 $("travel-date").value = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+$("fare-date").value = $("travel-date").value;
 const el = (tag, className, value) => {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -409,10 +410,12 @@ $("provider-fare-form").addEventListener("submit", async (event) => {
   try {
     const result = await api("/api/provider-fare", {
       origin: $("fare-origin").value, destination: $("fare-destination").value,
+      travel_date: $("fare-date").value,
       class: $("fare-class").value, adults: Number($("fare-adults").value),
       children: Number($("fare-children").value), quota: $("fare-quota").value
     });
     target.replaceChildren(el("h4", "", `${result.count} indicative train fares · ${result.origin} → ${result.destination}`));
+    target.append(el("p", "hint", `Your travel date: ${result.requested_date}. The provider does not use this date to calculate fares or verify service.`));
     target.append(el("p", "hint", `${result.class} · ${result.adults} adult(s) · ${result.children} child(ren) · ${result.quota}`));
     target.append(el("p", "callout", result.notice));
     if (result.provider_note) target.append(el("p", "hint", result.provider_note));

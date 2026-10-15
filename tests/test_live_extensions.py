@@ -145,8 +145,10 @@ class LiveProviderTests(unittest.TestCase):
                 {"train_no": "12952", "train_name": "RAJDHANI", "fares": [{"class": "3A", "total_fare": "1,245.50", "dynamic_fare": True}]}
             ]}}).encode())
         with env(), mock.patch.object(live_providers, "urlopen", capture):
-            result = live_providers.search_provider_fare("NDLS", "KYN", "3A")
+            result = live_providers.search_provider_fare("NDLS", "KYN", "3A", travel_date="2026-10-20")
         self.assertEqual([t["fare_rupees"] for t in result["trains"]], [1245.5, 1770])
+        self.assertEqual(result["requested_date"], "2026-10-20")
+        self.assertNotIn("2026-10-20", seen[0])
         self.assertTrue(result["trains"][0]["dynamic_fare"])
         self.assertEqual(result["provider_note"], "Indicative fare")
         self.assertIn("/fare?", seen[0])
