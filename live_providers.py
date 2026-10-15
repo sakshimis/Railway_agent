@@ -187,7 +187,7 @@ def search_live_schedule(train_no: str) -> dict:
 
 def search_provider_fare(origin: str, destination: str, travel_class: str,
                          adults: int = 1, children: int = 0, quota: str = "GN") -> dict:
-    """Get the selected provider's route/class fare enquiry (no train or date in API)."""
+    """Get per-train indicative fares for a route/class (no travel date in API)."""
     if not rapid_configured():
         raise LiveServiceUnavailable("Provider fare enquiry is not connected yet.")
     origin, destination = _station(origin), _station(destination)
@@ -204,16 +204,33 @@ def search_provider_fare(origin: str, destination: str, travel_class: str,
     body = data.get("data", data)
     if not isinstance(body, dict):
         raise LiveServiceUnavailable("The fare provider returned an unfamiliar format; mapping is needed.")
-    value = _find_fare_value(body)
-    fare = _parse_rupees(value)
-    if fare is None:
-        raise LiveServiceUnavailable("The fare provider returned no usable amount; mapping is needed.")
-    if not math.isfinite(fare) or not 0 < fare < 1_000_000:
-        raise LiveServiceUnavailable("The fare provider returned an invalid amount.")
+    rows = body.get("trains")
+    if not isinstance(rows, list):
+        raise LiveServiceUnavailable("The fare provider returned an unfamiliar train list; mapping is needed.")
+    options = []
+    for train in rows[:500]:
+        if not isinstance(train, dict):
+            continue
+        train_no = str(train.get("train_no") or "").strip()
+        if not re.fullmatch(r"\d{4,6}", train_no):
+            continue
+        for item in train.get("fares", []) if isinstance(train.get("fares"), list) else []:
+            if not isinstance(item, dict) or str(item.get("class", "")).upper() != travel_class:
+                continue
+            fare = _parse_rupees(item.get("total_fare"))
+            if fare is None or not math.isfinite(fare) or not 0 < fare < 1_000_000:
+                continue
+            options.append({"train_no": train_no,
+                            "train_name": str(train.get("train_name") or "")[:100],
+                            "type": str(train.get("type") or "")[:40],
+                            "fare_rupees": round(fare, 2),
+                            "dynamic_fare": item.get("dynamic_fare") is True})
+    options.sort(key=lambda row: (row["fare_rupees"], row["train_no"]))
     return {"origin": origin, "destination": destination, "class": travel_class,
             "adults": adults, "children": children, "quota": quota,
-            "fare_rupees": round(fare, 2), "as_of": _now(), "source": provider_name(),
-            "notice": "Provider route/class fare enquiry. This API request has no train number or travel date; verify any booking quote separately."}
+            "trains": options, "count": len(options), "as_of": _now(), "source": provider_name(),
+            "provider_note": str(body.get("note") or "")[:400],
+            "notice": "Indicative provider fares by train. The request has no travel date; dynamic-fare amounts are base fares, not live ticket prices. Verify before booking."}
 
 
 def _find_fare_value(body: dict, depth: int = 0):

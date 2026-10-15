@@ -136,14 +136,19 @@ class LiveProviderTests(unittest.TestCase):
             with self.assertRaisesRegex(LiveServiceUnavailable, "unfamiliar format"):
                 live_providers.search_live_schedule("12124")
 
-    def test_fare_enquiry_uses_documented_query_and_numeric_total(self):
+    def test_fare_enquiry_uses_documented_query_and_train_fares(self):
         seen = []
         def capture(request, timeout=8):
             seen.append(request.full_url)
-            return FakeResponse(b'{"success": true, "data": {"totalFare": "1,245"}}')
+            return FakeResponse(json.dumps({"success": True, "data": {"note": "Indicative fare", "trains": [
+                {"train_no": "12138", "train_name": "PUNJAB MAIL", "fares": [{"class": "3A", "total_fare": 1770, "dynamic_fare": False}]},
+                {"train_no": "12952", "train_name": "RAJDHANI", "fares": [{"class": "3A", "total_fare": "1,245.50", "dynamic_fare": True}]}
+            ]}}).encode())
         with env(), mock.patch.object(live_providers, "urlopen", capture):
             result = live_providers.search_provider_fare("NDLS", "KYN", "3A")
-        self.assertEqual(result["fare_rupees"], 1245)
+        self.assertEqual([t["fare_rupees"] for t in result["trains"]], [1245.5, 1770])
+        self.assertTrue(result["trains"][0]["dynamic_fare"])
+        self.assertEqual(result["provider_note"], "Indicative fare")
         self.assertIn("/fare?", seen[0])
         for part in ("adults=1", "from=NDLS", "to=KYN", "class=3A", "children=0", "quota=GN"):
             self.assertIn(part, seen[0])
@@ -151,14 +156,13 @@ class LiveProviderTests(unittest.TestCase):
     def test_fare_enquiry_rejects_unmapped_response(self):
         with env(), mock.patch.object(live_providers, "urlopen", fake_urlopen({
                 "success": True, "data": {"message": "ok"}})):
-            with self.assertRaisesRegex(LiveServiceUnavailable, "no usable amount"):
+            with self.assertRaisesRegex(LiveServiceUnavailable, "unfamiliar train list"):
                 live_providers.search_provider_fare("NDLS", "KYN", "3A")
 
-    def test_fare_enquiry_accepts_formatted_nested_total(self):
-        response = {"success": True, "data": {"fareDetails": {
-            "baseFare": 800, "totalFare": "Rs. 1,245.50"}}}
+    def test_fare_enquiry_empty_train_list(self):
+        response = {"success": True, "data": {"trains": []}}
         with env(), mock.patch.object(live_providers, "urlopen", fake_urlopen(response)):
-            self.assertEqual(live_providers.search_provider_fare("NDLS", "KYN", "3A")["fare_rupees"], 1245.5)
+            self.assertEqual(live_providers.search_provider_fare("NDLS", "KYN", "3A")["trains"], [])
 
     def test_input_validation(self):
         with env():

@@ -412,9 +412,17 @@ $("provider-fare-form").addEventListener("submit", async (event) => {
       class: $("fare-class").value, adults: Number($("fare-adults").value),
       children: Number($("fare-children").value), quota: $("fare-quota").value
     });
-    target.replaceChildren(el("div", "metric", `₹${result.fare_rupees.toLocaleString("en-IN")}`));
-    target.append(el("p", "hint", `${result.origin} → ${result.destination} · ${result.class} · ${result.adults} adult(s) · ${result.children} child(ren) · ${result.quota}`));
+    target.replaceChildren(el("h4", "", `${result.count} indicative train fares · ${result.origin} → ${result.destination}`));
+    target.append(el("p", "hint", `${result.class} · ${result.adults} adult(s) · ${result.children} child(ren) · ${result.quota}`));
     target.append(el("p", "callout", result.notice));
+    if (result.provider_note) target.append(el("p", "hint", result.provider_note));
+    if (!result.trains.length) target.append(el("p", "", "The provider returned no fares for this route and class."));
+    for (const train of result.trains) {
+      const card = el("div", "fare-train-row", "");
+      card.append(el("strong", "", `${train.train_no} · ${train.train_name || "Train"}`));
+      card.append(el("span", "", `₹${train.fare_rupees.toLocaleString("en-IN")} ${train.dynamic_fare ? "· dynamic base fare" : "· indicative fare"}`));
+      target.append(card);
+    }
     target.append(el("p", "subtle", `Source: ${result.source}; checked ${checkedAt(result.as_of)}`));
   } catch (err) { error(target, err); }
 });

@@ -25,9 +25,9 @@ This is a train-number lookup, **not** a trains-between-stations API. The main r
 
 ## Route/class fare enquiry
 
-The selected provider also documents `GET /fare` with `adults`, `from`, `to`, `class`, `children` and `quota` query fields. The planner has a separate fare-enquiry form using these exact fields. It uses the same server-side RapidAPI host and key. The adapter accepts a numeric total fare only; an unfamiliar response produces a mapping error rather than a fabricated price.
+The selected provider also documents `GET /fare` with `adults`, `from`, `to`, `class`, `children` and `quota` query fields. The planner has a separate fare-enquiry form using these exact fields. It uses the same server-side RapidAPI host and key. Its response contains `data.trains[]`, each with a `fares[]` entry for the requested class. The adapter displays valid per-train `total_fare` amounts sorted by fare and flags dynamic base fares.
 
-This request has **no train number or travel date**. The returned amount must not be presented as the price of a specific train on a specific date, and it does not establish seat availability or permit booking. A successful response sample from this provider is still needed to validate its fare field mapping.
+This request has **no train number or travel date** (the provider selects trains for the route). Returned amounts are indicative, not dated ticket quotes. The provider says `dynamic_fare: true` entries show base prices rather than live dynamic prices. The response does not establish seat availability or permit booking.
 
 The passenger page no longer sends people to an external railway website. Its own server has `/api/live-status` and `/api/live-search` endpoints. Without approved provider access, the page says that current fares and seats are unavailable and continues to show clearly labeled historical comparisons. This is an integration point, **not a working IRCTC connection**.
 
