@@ -25,7 +25,7 @@ This is a train-number lookup, **not** a trains-between-stations API. The main r
 
 ## Route/class fare enquiry
 
-The selected provider also documents `GET /fare` with `adults`, `from`, `to`, `class`, `children` and `quota` query fields. The planner has a separate fare-enquiry form using these exact fields. It uses the same server-side RapidAPI host and key. Its response contains `data.trains[]`, each with a `fares[]` entry for the requested class. The adapter displays valid per-train `total_fare` amounts sorted by fare and flags dynamic base fares.
+The selected provider also documents `GET /fare` with `adults`, `from`, `to`, `class`, `children` and `quota` query fields. The administrator's Model lab has a separate fare-enquiry form using these exact fields. Passenger accounts cannot access its API. It uses the same server-side RapidAPI host and key. Its response contains `data.trains[]`, each with a `fares[]` entry for the requested class. The adapter displays valid per-train `total_fare` amounts sorted by fare and flags dynamic base fares.
 
 The page accepts a travel date and displays it as the user's planning context. The provider request has **no train number or travel date** (the provider selects trains for the route), so the date does not affect the returned fares or verify that a train runs that day. Returned amounts are indicative, not dated ticket quotes. The provider says `dynamic_fare: true` entries show base prices rather than live dynamic prices. The response does not establish seat availability or permit booking.
 

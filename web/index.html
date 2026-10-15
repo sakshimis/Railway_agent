@@ -62,6 +62,11 @@
         <p id="schedule-availability" class="hint">Checking provider connection…</p>
         <div id="schedule-result" class="mini-result" aria-live="polite"></div>
       </form>
+      <div id="live-result" class="result" aria-live="polite"></div>
+      <div id="history-result" class="result" aria-live="polite"></div>
+    </section>
+    <section class="panel admin-only" id="predictions">
+      <div class="section-head"><div><div class="eyebrow">02 / MODEL RESEARCH</div><h2>Model lab</h2></div><span class="tag">Admin only</span></div>
       <form id="provider-fare-form" class="card schedule-form">
         <div class="card-kicker"><span class="status-light"></span> PROVIDER FARE ENQUIRY</div>
         <h3>Compare indicative train fares</h3>
@@ -79,11 +84,6 @@
         <p id="fare-availability" class="hint">Checking provider connection…</p>
         <div id="provider-fare-result" class="mini-result" aria-live="polite"></div>
       </form>
-      <div id="live-result" class="result" aria-live="polite"></div>
-      <div id="history-result" class="result" aria-live="polite"></div>
-    </section>
-    <section class="panel admin-only" id="predictions">
-      <div class="section-head"><div><div class="eyebrow">02 / MODEL RESEARCH</div><h2>Model lab</h2></div><span class="tag">Admin only</span></div>
       <p class="notice">These two controls use synthetic demonstration models. The Kaggle confirmation dataset was excluded from passenger prediction because none of its 10,053 usable wait-list rows ended confirmed. Its current-status field also reveals much of the outcome. The fare snapshot has only one month, so a future fare trend cannot be validated.</p>
       <div class="grid two">
         <form id="confirmation-form" class="card">

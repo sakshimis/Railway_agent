@@ -121,7 +121,7 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         if origin and origin != f"http://127.0.0.1:{self.server.server_port}" and origin != f"http://localhost:{self.server.server_port}":
             return self.send_json(403, {"error": "Invalid request origin."})
-        admin_paths = {"/api/plan", "/api/confirmation", "/api/fare", "/api/fraud"}
+        admin_paths = {"/api/plan", "/api/confirmation", "/api/fare", "/api/fraud", "/api/provider-fare"}
         if path != "/api/login" and not self.require_role(admin=path.startswith("/api/governance") or path in admin_paths):
             return
         length = int(self.headers.get("Content-Length", "0"))

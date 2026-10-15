@@ -360,6 +360,8 @@ class RailwayDemoTests(unittest.TestCase):
                 self.assertEqual(status, 503)
                 status, res, _ = call("/api/live-seats", {"train_no": "12345", "travel_date": "2026-10-20", "class": "SL"})
                 self.assertEqual(status, 503)
+                status, res, _ = call("/api/provider-fare", {"origin": "NDLS", "destination": "KYN", "class": "3A"})
+                self.assertEqual(status, 403)
 
 
 if __name__ == "__main__":

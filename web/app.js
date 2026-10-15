@@ -151,7 +151,10 @@ $("history-form").addEventListener("submit", async (event) => {
     const summary = el("div", "card");
     summary.append(el("h3", "", `${result.origin_code} → ${result.destination_code}`));
     const totalTrains = result.matching_trains + result.schedule_only_count;
-    summary.append(el("p", "", `${totalTrains} train${totalTrains === 1 ? "" : "s"} found · Sorted by ${$("sort").selectedOptions[0].textContent.toLowerCase()}.`));
+    summary.append(el("p", "", currentRole === "admin"
+      ? `${totalTrains} train${totalTrains === 1 ? "" : "s"} found · Sorted by ${$("sort").selectedOptions[0].textContent.toLowerCase()}.`
+      : totalTrains ? "Best matching train for your selected preferences:" : "No matching train found."));
+    summary.append(el("p", "hint", `Requested date: ${$("travel-date").value}. Historical schedules do not verify service or seats on this date.`));
     if (result.schedule_only_count)
       summary.append(el("p", "hint", `Some fares are estimates because recorded prices are unavailable. Check current fares and seats before booking.`));
     if (totalTrains === 1)
@@ -177,12 +180,14 @@ $("history-form").addEventListener("submit", async (event) => {
       `Lowest ${rankingClass} recorded or estimated fare`;
     const trainCard = ({item, estimated}, featured = false) => {
       const card = el("div", featured ? "card train-card recommendation" : "card train-card");
-      if (featured) card.append(el("div", "eyebrow", `FIRST BY ${sortReason.toUpperCase()} · ${estimated ? "ESTIMATED PRICE" : "RECORDED PRICE"}`));
+      if (featured) card.append(el("div", "eyebrow", `RECOMMENDED · ${sortReason.toUpperCase()} · ${estimated ? "ESTIMATED PRICE" : "RECORDED PRICE"}`));
       card.append(el("h3", "", `${item.train_no} · ${item.name}`));
       card.append(el("p", "hint", estimated ? "Timetable match; class availability and fares are unverified." : "Recorded October 2023 class fares for this station pair."));
       const fares = el("div", "fare-options");
-      if (estimated) item.fare_estimates.forEach((fare) => fares.append(el("span", "fare-option", `Estimated ${fare.class} ₹${fare.fare}`)));
-      else item.fares.forEach((fare) => fares.append(el("span", "fare-option", `${fare.class} · ₹${fare.fare} recorded`)));
+      const visibleFares = estimated ? item.fare_estimates : item.fares;
+      visibleFares.filter((fare) => currentRole === "admin" || fare.class === rankingClass)
+        .forEach((fare) => fares.append(el("span", "fare-option", estimated
+          ? `Estimated ${fare.class} ₹${fare.fare}` : `${fare.class} · ₹${fare.fare} recorded`)));
       card.append(fares);
       line(card, "Route", `${item.origin} → ${item.destination}`);
       line(card, "Snapshot schedule", `${item.departure} → ${item.arrival}${item.day_offset ? ` (+${item.day_offset} day)` : ""}`);
@@ -212,7 +217,7 @@ $("history-form").addEventListener("submit", async (event) => {
       return card;
     };
     if (ranked.length) target.append(trainCard(ranked[0], true));
-    if (ranked.length > 1) {
+    if (ranked.length > 1 && currentRole === "admin") {
       const more = el("details", "other-trains");
       more.append(el("summary", "", `Show ${ranked.length - 1} other train${ranked.length === 2 ? "" : "s"} in this order`));
       ranked.slice(1).forEach((item) => more.append(trainCard(item)));
