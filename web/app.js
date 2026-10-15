@@ -29,6 +29,16 @@ function line(target, label, value) {
   row.append(el("strong", "", label + ": "), document.createTextNode(String(value)));
   target.append(row);
 }
+function railTime(value) {
+  const text = String(value || "").trim();
+  const match = /^(\d{1,2})\.(\d{2})$/.exec(text);
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : text || "—";
+}
+function checkedAt(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) :
+    date.toLocaleString("en-IN", {timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short"}) + " IST";
+}
 async function refreshCapabilities() {
   try {
     const status = await api("/api/live-status");
@@ -379,13 +389,13 @@ $("schedule-form").addEventListener("submit", async (event) => {
     result.stops.forEach((stop) => {
       const row = el("tr");
       [stop.station_name ? `${stop.station_name} (${stop.station_code})` : stop.station_code,
-       stop.arrival || "—", stop.departure || "—", stop.day || "—"]
+       railTime(stop.arrival), railTime(stop.departure), stop.day || "—"]
         .forEach((value) => row.append(el("td", "", value)));
       body.append(row);
     });
     table.append(head, body);
     wrapper.append(table);
-    target.append(wrapper, el("p", "subtle", `Source: ${result.source}; checked ${result.as_of}`));
+    target.append(wrapper, el("p", "subtle", `Source: ${result.source}; checked ${checkedAt(result.as_of)}`));
   } catch (err) { error(target, err); }
 });
 for (const [id, pnr] of [["sample-pnr-one", "1234567890"], ["sample-pnr-two", "9876543210"]]) {
