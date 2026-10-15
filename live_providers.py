@@ -16,6 +16,7 @@ Credentials stay on the Python server and are never sent to the browser.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import threading
@@ -33,13 +34,14 @@ _CACHE: dict[str, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
 _RATE_LOCK = threading.Lock()
 _last_call = 0.0
-TTL_SECONDS = {"between": 3600, "pnr": 300, "seats": 600, "live": 120, "schedule": 3600}
-DEFAULT_PATHS = {  # only PNR and train-number schedule paths are confirmed from user screenshots
+TTL_SECONDS = {"between": 3600, "pnr": 300, "seats": 600, "live": 120, "schedule": 3600, "fare": 600}
+DEFAULT_PATHS = {  # PNR, schedule and fare paths are confirmed from user screenshots
     "between": "",
     "pnr": "/getPNRStatus/{pnrNumber}",
     "seats": "",
     "live": "",
     "schedule": "/schedule/{trainNo}",
+    "fare": "/fare",
 }
 
 
@@ -58,6 +60,10 @@ def pnr_configured() -> bool:
 
 
 def schedule_configured() -> bool:
+    return rapid_configured()
+
+
+def fare_configured() -> bool:
     return rapid_configured()
 
 
@@ -177,6 +183,40 @@ def search_live_schedule(train_no: str) -> dict:
             "train_name": str(_pick(details, "trainName", "train_name", "name") or "")[:120],
             "stops": stops, "as_of": _now(), "source": provider_name(),
             "notice": "Provider timetable enquiry; running days and service on a chosen date are not verified."}
+
+
+def search_provider_fare(origin: str, destination: str, travel_class: str,
+                         adults: int = 1, children: int = 0, quota: str = "GN") -> dict:
+    """Get the selected provider's route/class fare enquiry (no train or date in API)."""
+    if not rapid_configured():
+        raise LiveServiceUnavailable("Provider fare enquiry is not connected yet.")
+    origin, destination = _station(origin), _station(destination)
+    if origin == destination:
+        raise ValueError("Choose different origin and destination stations.")
+    travel_class = _klass(travel_class)
+    if type(adults) is not int or not 1 <= adults <= 6 or type(children) is not int or not 0 <= children <= 6:
+        raise ValueError("Choose 1–6 adults and 0–6 children.")
+    quota = str(quota).strip().upper()
+    if quota not in {"GN", "TQ"}:
+        raise ValueError("Choose General (GN) or Tatkal (TQ) quota.")
+    data = _rapid("fare", {"adults": adults, "from": origin, "to": destination,
+                            "class": travel_class, "children": children, "quota": quota})
+    body = data.get("data", data)
+    if not isinstance(body, dict):
+        raise LiveServiceUnavailable("The fare provider returned an unfamiliar format; mapping is needed.")
+    value = _pick(body, "totalFare", "total_fare", "fare", "fareAmount", "ticketFare", "amount")
+    if isinstance(value, dict):
+        value = _pick(value, "totalFare", "total", "amount")
+    try:
+        fare = float(str(value).replace(",", "").replace("₹", "").strip())
+    except (TypeError, ValueError) as exc:
+        raise LiveServiceUnavailable("The fare provider returned no usable amount; mapping is needed.") from exc
+    if not math.isfinite(fare) or not 0 < fare < 1_000_000:
+        raise LiveServiceUnavailable("The fare provider returned an invalid amount.")
+    return {"origin": origin, "destination": destination, "class": travel_class,
+            "adults": adults, "children": children, "quota": quota,
+            "fare_rupees": round(fare, 2), "as_of": _now(), "source": provider_name(),
+            "notice": "Provider route/class fare enquiry. This API request has no train number or travel date; verify any booking quote separately."}
 
 
 def search_live_seats(train_no: str, travel_date: str, travel_class: str,

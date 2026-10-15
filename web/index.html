@@ -62,6 +62,22 @@
         <p id="schedule-availability" class="hint">Checking provider connection…</p>
         <div id="schedule-result" class="mini-result" aria-live="polite"></div>
       </form>
+      <form id="provider-fare-form" class="card schedule-form">
+        <div class="card-kicker"><span class="status-light"></span> PROVIDER FARE ENQUIRY</div>
+        <h3>Check a route and class fare</h3>
+        <p class="hint">This provider's fare request does not include a train number or travel date. Treat its answer as an enquiry, not a ticket quote.</p>
+        <div class="fare-query-grid">
+          <div><label for="fare-origin">From code</label><input id="fare-origin" value="NDLS" maxlength="8" required></div>
+          <div><label for="fare-destination">To code</label><input id="fare-destination" value="KYN" maxlength="8" required></div>
+          <div><label for="fare-class">Class</label><select id="fare-class"><option>3A</option><option>SL</option><option>2A</option><option>1A</option><option>CC</option><option>2S</option></select></div>
+          <div><label for="fare-adults">Adults</label><input id="fare-adults" type="number" min="1" max="6" value="1" required></div>
+          <div><label for="fare-children">Children</label><input id="fare-children" type="number" min="0" max="6" value="0" required></div>
+          <div><label for="fare-quota">Quota</label><select id="fare-quota"><option value="GN">General</option><option value="TQ">Tatkal</option></select></div>
+        </div>
+        <button type="submit" class="primary">Check provider fare →</button>
+        <p id="fare-availability" class="hint">Checking provider connection…</p>
+        <div id="provider-fare-result" class="mini-result" aria-live="polite"></div>
+      </form>
       <div id="live-result" class="result" aria-live="polite"></div>
       <div id="history-result" class="result" aria-live="polite"></div>
     </section>

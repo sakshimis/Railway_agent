@@ -136,6 +136,24 @@ class LiveProviderTests(unittest.TestCase):
             with self.assertRaisesRegex(LiveServiceUnavailable, "unfamiliar format"):
                 live_providers.search_live_schedule("12124")
 
+    def test_fare_enquiry_uses_documented_query_and_numeric_total(self):
+        seen = []
+        def capture(request, timeout=8):
+            seen.append(request.full_url)
+            return FakeResponse(b'{"success": true, "data": {"totalFare": "1,245"}}')
+        with env(), mock.patch.object(live_providers, "urlopen", capture):
+            result = live_providers.search_provider_fare("NDLS", "KYN", "3A")
+        self.assertEqual(result["fare_rupees"], 1245)
+        self.assertIn("/fare?", seen[0])
+        for part in ("adults=1", "from=NDLS", "to=KYN", "class=3A", "children=0", "quota=GN"):
+            self.assertIn(part, seen[0])
+
+    def test_fare_enquiry_rejects_unmapped_response(self):
+        with env(), mock.patch.object(live_providers, "urlopen", fake_urlopen({
+                "success": True, "data": {"message": "ok"}})):
+            with self.assertRaisesRegex(LiveServiceUnavailable, "no usable amount"):
+                live_providers.search_provider_fare("NDLS", "KYN", "3A")
+
     def test_input_validation(self):
         with env():
             with self.assertRaises(ValueError):

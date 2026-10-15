@@ -17,7 +17,7 @@ async function api(path, body) {
   const response = await fetch(path, options);
   const result = await response.json();
   if (!response.ok) {
-    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search", "/api/live-pnr", "/api/live-schedule"].includes(path))
+    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search", "/api/live-pnr", "/api/live-schedule", "/api/provider-fare"].includes(path))
       throw new Error("The page was updated but the server is still running old code. Stop the server with Ctrl+C, then start it again.");
     throw new Error(result.error || "Request failed");
   }
@@ -48,9 +48,13 @@ async function refreshCapabilities() {
     $("schedule-availability").textContent = status.schedule_connected
       ? `Provider timetable lookup connected through ${status.provider}.`
       : "Train schedule lookup is not configured on this server yet.";
+    $("fare-availability").textContent = status.fare_connected
+      ? `Provider fare enquiry connected through ${status.provider}.`
+      : "Provider fare enquiry is not configured on this server yet.";
   } catch (err) {
     $("pnr-availability").textContent = "Could not check the PNR provider connection.";
     $("schedule-availability").textContent = "Could not check the schedule provider connection.";
+    $("fare-availability").textContent = "Could not check the fare provider connection.";
   }
 }
 async function loadLive(origin, destination) {
@@ -396,6 +400,22 @@ $("schedule-form").addEventListener("submit", async (event) => {
     table.append(head, body);
     wrapper.append(table);
     target.append(wrapper, el("p", "subtle", `Source: ${result.source}; checked ${checkedAt(result.as_of)}`));
+  } catch (err) { error(target, err); }
+});
+$("provider-fare-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const target = $("provider-fare-result");
+  target.replaceChildren(el("div", "callout", "Checking the provider fare…"));
+  try {
+    const result = await api("/api/provider-fare", {
+      origin: $("fare-origin").value, destination: $("fare-destination").value,
+      class: $("fare-class").value, adults: Number($("fare-adults").value),
+      children: Number($("fare-children").value), quota: $("fare-quota").value
+    });
+    target.replaceChildren(el("div", "metric", `₹${result.fare_rupees.toLocaleString("en-IN")}`));
+    target.append(el("p", "hint", `${result.origin} → ${result.destination} · ${result.class} · ${result.adults} adult(s) · ${result.children} child(ren) · ${result.quota}`));
+    target.append(el("p", "callout", result.notice));
+    target.append(el("p", "subtle", `Source: ${result.source}; checked ${checkedAt(result.as_of)}`));
   } catch (err) { error(target, err); }
 });
 for (const [id, pnr] of [["sample-pnr-one", "1234567890"], ["sample-pnr-two", "9876543210"]]) {

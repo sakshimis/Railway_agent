@@ -24,8 +24,8 @@ from historical import (search as historical_search, stations as historical_stat
                         train_on_route)
 from live_providers import (
     LiveServiceUnavailable, configured as live_configured, search_live,
-    search_live_pnr, search_live_seats, search_live_schedule, live_train_status,
-    provider_name, pnr_configured, schedule_configured,
+    search_live_pnr, search_live_seats, search_live_schedule, search_provider_fare,
+    live_train_status, provider_name, pnr_configured, schedule_configured, fare_configured,
 )
 from outcomes import summary as outcome_summary
 
@@ -83,6 +83,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"connected": live_configured(),
                                         "pnr_connected": pnr_configured(),
                                         "schedule_connected": schedule_configured(),
+                                        "fare_connected": fare_configured(),
                                         "provider": provider_name()})
         if path == "/api/trains":
             if not self.require_role(): return
@@ -202,6 +203,15 @@ class Handler(BaseHTTPRequestHandler):
                 result = search_live_schedule(str(body.get("train_no", "")))
                 audit("live_schedule_checked", {"train_no": result["train_no"],
                                                 "stop_count": len(result["stops"])},
+                      round((time.perf_counter() - started) * 1000))
+            elif path == "/api/provider-fare":
+                result = search_provider_fare(
+                    str(body.get("origin", "")), str(body.get("destination", "")),
+                    str(body.get("class", "")), int(body.get("adults", 1)),
+                    int(body.get("children", 0)), str(body.get("quota", "GN")))
+                audit("provider_fare_checked", {"origin_code": result["origin"],
+                                                "destination_code": result["destination"],
+                                                "class": result["class"]},
                       round((time.perf_counter() - started) * 1000))
             elif path == "/api/live-seats":
                 result = search_live_seats(

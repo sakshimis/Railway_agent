@@ -23,6 +23,12 @@ The same provider's code snippet shows `GET /schedule/{trainNo}`. The journey pl
 
 This is a train-number lookup, **not** a trains-between-stations API. The main route comparison still uses historical data until a separate documented route-search endpoint is connected.
 
+## Route/class fare enquiry
+
+The selected provider also documents `GET /fare` with `adults`, `from`, `to`, `class`, `children` and `quota` query fields. The planner has a separate fare-enquiry form using these exact fields. It uses the same server-side RapidAPI host and key. The adapter accepts a numeric total fare only; an unfamiliar response produces a mapping error rather than a fabricated price.
+
+This request has **no train number or travel date**. The returned amount must not be presented as the price of a specific train on a specific date, and it does not establish seat availability or permit booking. A successful response sample from this provider is still needed to validate its fare field mapping.
+
 The passenger page no longer sends people to an external railway website. Its own server has `/api/live-status` and `/api/live-search` endpoints. Without approved provider access, the page says that current fares and seats are unavailable and continues to show clearly labeled historical comparisons. This is an integration point, **not a working IRCTC connection**.
 
 ## How to obtain authorized data
