@@ -82,12 +82,18 @@ class LiveProviderTests(unittest.TestCase):
                                           "RAPIDAPI_HOST": "example.p.rapidapi.com",
                                           "RAPIDAPI_PATH_BETWEEN": "",
                                           "RAPIDAPI_PATH_SEATS": "",
+                                          "RAPIDAPI_PATH_LIVE": "",
                                           "RAILWAY_LIVE_API_URL": "",
-                                          "RAILWAY_LIVE_API_TOKEN": ""}):
+                                          "RAILWAY_LIVE_API_TOKEN": ""}), \
+             mock.patch.object(live_providers, "urlopen", fake_urlopen({
+                 "success": True, "data": {"trainNumber": "12951", "status": "CNF"}})):
             self.assertTrue(live_providers.pnr_configured())
             self.assertFalse(live_providers.configured())
+            self.assertEqual(live_providers.search_live_pnr("8148735219")["status"], "CNF")
             with self.assertRaises(LiveServiceUnavailable):
                 live_providers.search_live("PUNE", "NDLS", "2026-10-20")
+            with self.assertRaises(LiveServiceUnavailable):
+                live_providers.search_live_seats("12951", "2026-10-20", "SL", "PUNE", "NDLS")
 
     def test_failed_pnr_body_is_not_displayed_as_live_status(self):
         response = {"success": False, "message": "FLUSHED PNR / PNR NOT YET GENERATED"}

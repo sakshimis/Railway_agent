@@ -100,7 +100,7 @@ def search_live(origin: str, destination: str, travel_date: str, travel_class: s
 def search_live_pnr(pnr: str) -> dict:
     if live_railway.configured():
         return live_railway.search_live_pnr(pnr)
-    if not (rapid_configured() and os.getenv("RAPIDAPI_PATH_SEATS")):
+    if not rapid_configured():
         raise LiveServiceUnavailable("Live PNR enquiry is not connected yet.")
     pnr = str(pnr).strip()
     if not re.fullmatch(r"\d{10}", pnr):
@@ -133,7 +133,7 @@ def search_live_seats(train_no: str, travel_date: str, travel_class: str,
                       origin: str = "", destination: str = "") -> dict:
     if live_railway.configured():
         return live_railway.search_live_seats(train_no, travel_date, travel_class, origin, destination)
-    if not (rapid_configured() and os.getenv("RAPIDAPI_PATH_LIVE")):
+    if not (rapid_configured() and os.getenv("RAPIDAPI_PATH_SEATS")):
         raise LiveServiceUnavailable("Live seat availability is not connected yet.")
     train_no = _train(train_no)
     _journey_date(travel_date)
@@ -160,7 +160,7 @@ def search_live_seats(train_no: str, travel_date: str, travel_class: str,
 
 def live_train_status(train_no: str, start_day: str = "") -> dict:
     """Current running status. Only a third-party provider is wired for this today."""
-    if not rapid_configured():
+    if not (rapid_configured() and os.getenv("RAPIDAPI_PATH_LIVE")):
         raise LiveServiceUnavailable("Live running status is not connected yet.")
     train_no = _train(train_no)
     params = {"trainNo": train_no}
