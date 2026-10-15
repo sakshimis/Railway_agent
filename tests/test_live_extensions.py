@@ -154,6 +154,12 @@ class LiveProviderTests(unittest.TestCase):
             with self.assertRaisesRegex(LiveServiceUnavailable, "no usable amount"):
                 live_providers.search_provider_fare("NDLS", "KYN", "3A")
 
+    def test_fare_enquiry_accepts_formatted_nested_total(self):
+        response = {"success": True, "data": {"fareDetails": {
+            "baseFare": 800, "totalFare": "Rs. 1,245.50"}}}
+        with env(), mock.patch.object(live_providers, "urlopen", fake_urlopen(response)):
+            self.assertEqual(live_providers.search_provider_fare("NDLS", "KYN", "3A")["fare_rupees"], 1245.5)
+
     def test_input_validation(self):
         with env():
             with self.assertRaises(ValueError):

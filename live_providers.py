@@ -204,19 +204,44 @@ def search_provider_fare(origin: str, destination: str, travel_class: str,
     body = data.get("data", data)
     if not isinstance(body, dict):
         raise LiveServiceUnavailable("The fare provider returned an unfamiliar format; mapping is needed.")
-    value = _pick(body, "totalFare", "total_fare", "fare", "fareAmount", "ticketFare", "amount")
-    if isinstance(value, dict):
-        value = _pick(value, "totalFare", "total", "amount")
-    try:
-        fare = float(str(value).replace(",", "").replace("₹", "").strip())
-    except (TypeError, ValueError) as exc:
-        raise LiveServiceUnavailable("The fare provider returned no usable amount; mapping is needed.") from exc
+    value = _find_fare_value(body)
+    fare = _parse_rupees(value)
+    if fare is None:
+        raise LiveServiceUnavailable("The fare provider returned no usable amount; mapping is needed.")
     if not math.isfinite(fare) or not 0 < fare < 1_000_000:
         raise LiveServiceUnavailable("The fare provider returned an invalid amount.")
     return {"origin": origin, "destination": destination, "class": travel_class,
             "adults": adults, "children": children, "quota": quota,
             "fare_rupees": round(fare, 2), "as_of": _now(), "source": provider_name(),
             "notice": "Provider route/class fare enquiry. This API request has no train number or travel date; verify any booking quote separately."}
+
+
+def _find_fare_value(body: dict, depth: int = 0):
+    """Find a total fare in common wrappers without using base-fare components."""
+    if depth > 3:
+        return None
+    direct = _pick(body, "totalFare", "total_fare", "totalAmount", "total_amount",
+                   "fareAmount", "ticketFare", "fare_rupees", "fare", "amount")
+    if direct is not None and not isinstance(direct, (dict, list)):
+        return direct
+    for key in ("fare", "fareDetails", "fare_details", "fareBreakup", "fare_breakup",
+                "pricing", "price", "result", "data"):
+        nested = body.get(key)
+        if isinstance(nested, dict):
+            found = _find_fare_value(nested, depth + 1)
+            if found is not None:
+                return found
+    return None
+
+
+def _parse_rupees(value):
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    match = re.fullmatch(r"\s*(?:₹|Rs\.?|INR)?\s*([\d,]+(?:\.\d{1,2})?)\s*",
+                         str(value), re.IGNORECASE)
+    return float(match.group(1).replace(",", "")) if match else None
 
 
 def search_live_seats(train_no: str, travel_date: str, travel_class: str,
