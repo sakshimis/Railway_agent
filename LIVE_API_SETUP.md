@@ -1,5 +1,22 @@
 # Current fare and seat data
 
+## RapidAPI PNR connection for the selected provider
+
+The passenger support page can call the **GET `/getPNRStatus/{pnr}`** endpoint shown in the RapidAPI playground. This is a third-party provider, not proof of an official IRCTC integration. The request is made by Python on the server; the API key is never added to `web/app.js` or committed to Git.
+
+In RapidAPI, open the PNR endpoint's **Code snippet** and copy its `X-RapidAPI-Host` value. Review the provider's plan and terms. In the PowerShell window you will use to start the app, set the values below, replacing the placeholders with your own values. Do **not** send the key in chat or upload a screenshot that reveals it.
+
+```powershell
+$env:RAPIDAPI_HOST = "HOST_FROM_RAPIDAPI_CODE_SNIPPET"
+$env:RAPIDAPI_KEY = "YOUR_PRIVATE_RAPIDAPI_KEY"
+$env:RAPIDAPI_PATH_PNR = "/getPNRStatus/{pnrNumber}"
+.\.venv\Scripts\python.exe app.py
+```
+
+The path variable is optional for this PNR endpoint; it is shown to make the mapping explicit. Sign in as a passenger, open **Passenger support → Check PNR status**, and enter a current 10-digit PNR you are allowed to use. The app only displays a live result when the provider returns usable data. For `success: false` (including “FLUSHED PNR / PNR NOT YET GENERATED”), it shows the provider's error instead. A `200 OK` HTTP response alone is not a successful PNR lookup. The fictional sample PNRs remain in a separate expandable demonstration.
+
+**PNR access does not provide live fares, seats, train search or booking.** Those features stay unavailable unless you separately configure and verify suitable endpoints, response mappings and usage rights. The route and seat RapidAPI paths are intentionally blank by default because the selected PNR page does not document them.
+
 The passenger page no longer sends people to an external railway website. Its own server has `/api/live-status` and `/api/live-search` endpoints. Without approved provider access, the page says that current fares and seats are unavailable and continues to show clearly labeled historical comparisons. This is an integration point, **not a working IRCTC connection**.
 
 ## How to obtain authorized data

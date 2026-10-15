@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Railway AI • Journey Planner</title>
+  <title>Railway AI | Travel intelligence</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="mark">↗</span><span>Railway AI<br><small>Journey Planner</small></span></div>
-    <div class="row"><span id="signed-in" class="pill">Offline case-study demo</span><button id="logout" class="secondary" hidden>Log out</button></div>
+    <div class="brand"><span class="mark">R</span><span>Railway AI<br><small>Travel intelligence</small></span></div>
+    <div class="row"><span id="signed-in" class="pill">Case-study workspace</span><button id="logout" class="secondary" hidden>Log out</button></div>
   </header>
   <section id="login-screen" class="login-screen">
     <form id="login-form" class="card narrow">
@@ -23,10 +23,13 @@
   </section>
   <main id="workspace" hidden>
     <section class="hero">
-      <div class="eyebrow">RAILWAY TRAVEL ASSISTANT</div>
-      <h1>Plan your journey.</h1>
-      <p>Compare routes, travel times and fares.</p>
-      <div class="notice">Historical results are labeled below. Current prices and seats appear only when a live feed is connected.</div>
+      <div class="hero-copy">
+        <div class="eyebrow">YOUR RAIL JOURNEY, MADE CLEARER</div>
+        <h1>Find a better way<br>to get there<span class="hero-dot">.</span></h1>
+        <p>Explore trains, compare journey times and understand the evidence behind each recommendation.</p>
+        <div class="hero-actions"><a href="#planner" class="hero-link">Explore trains <span>↗</span></a><span class="hero-caption">Historical comparison · live PNR when configured</span></div>
+      </div>
+      <div class="hero-visual" aria-hidden="true"><div class="route-node start">PUNE</div><div class="route-track"><span class="route-train">➜</span></div><div class="route-node end">NDLS</div><div class="visual-caption">YOUR NEXT JOURNEY STARTS HERE</div></div>
     </section>
     <nav class="tabs" aria-label="Demo sections">
       <button class="tab active" data-tab="planner">Journey planner</button>
@@ -37,7 +40,7 @@
       <button class="tab admin-only" data-tab="simulation">Scenario lab</button>
     </nav>
     <section class="panel active" id="planner">
-      <div class="section-head"><div><div class="eyebrow">01 / TRAIN SEARCH</div><h2>Journey planner</h2></div><span class="tag">Historical comparison</span></div>
+      <div class="section-head"><div><div class="eyebrow">01 / TRAIN SEARCH</div><h2>Journey planner</h2><p class="section-subtitle">Compare recorded schedules and fares, with estimates clearly marked.</p></div><span class="tag">Historical data</span></div>
       <form id="history-form" class="card planner-form">
           <label for="quick-query">Or describe a route (optional)</label><input id="quick-query" placeholder="from Pune to Delhi under 1500 sleeper">
           <p class="hint">A sentence can fill the route, budget and class.</p>
@@ -76,7 +79,7 @@
       </div>
     </section>
     <section class="panel" id="support">
-      <div class="section-head"><div><div class="eyebrow">03 / GROUNDED ASSISTANCE</div><h2>Passenger support</h2></div><span class="tag">Abstains when sources are missing</span></div>
+      <div class="section-head"><div><div class="eyebrow">03 / TRAVEL ASSISTANCE</div><h2>Passenger support</h2><p class="section-subtitle">Ask a policy question or check a PNR through the connected provider.</p></div><span class="tag">Passenger tools</span></div>
       <div class="grid two">
         <form id="support-form" class="card">
           <h3>Ask a question</h3>
@@ -86,13 +89,15 @@
           <div id="support-result" class="mini-result" aria-live="polite"></div>
         </form>
         <form id="pnr-form" class="card">
-          <h3>Sample PNR lookup</h3>
-          <label for="pnr">10-digit sample PNR</label><input id="pnr" value="1234567890" inputmode="numeric">
-          <p class="hint">Try 1234567890 or 9876543210. Real PNRs are not connected.</p>
-          <button type="submit" class="primary">Look up sample →</button>
+          <div class="card-kicker"><span class="status-light"></span> LIVE ENQUIRY</div>
+          <h3>Check PNR status</h3>
+          <label for="pnr">10-digit PNR</label><input id="pnr" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" autocomplete="off" placeholder="Enter your PNR" required>
+          <p id="pnr-availability" class="hint">Checking provider connection…</p>
+          <button type="submit" class="primary">Check PNR →</button>
           <div id="pnr-result" class="mini-result" aria-live="polite"></div>
         </form>
       </div>
+      <details class="sample-lookup"><summary>Try the sample PNR demonstration</summary><div class="card"><p class="hint">These are fictional records for the case-study demonstration.</p><div class="row"><button type="button" id="sample-pnr-one" class="secondary">Sample 1234567890</button><button type="button" id="sample-pnr-two" class="secondary">Sample 9876543210</button></div><div id="sample-pnr-result" class="mini-result" aria-live="polite"></div></div></details>
       <form id="refund-form" class="card narrow" style="margin-top:18px">
         <h3>Sample refund tracking</h3>
         <label for="refund-reference">Demo refund reference</label><input id="refund-reference" value="DEMO-R1001">

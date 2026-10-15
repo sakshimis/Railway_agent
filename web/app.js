@@ -17,7 +17,7 @@ async function api(path, body) {
   const response = await fetch(path, options);
   const result = await response.json();
   if (!response.ok) {
-    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search"].includes(path))
+    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search", "/api/live-pnr"].includes(path))
       throw new Error("The page was updated but the server is still running old code. Stop the server with Ctrl+C, then start it again.");
     throw new Error(result.error || "Request failed");
   }
@@ -28,6 +28,16 @@ function line(target, label, value) {
   const row = el("div", "decision");
   row.append(el("strong", "", label + ": "), document.createTextNode(String(value)));
   target.append(row);
+}
+async function refreshCapabilities() {
+  try {
+    const status = await api("/api/live-status");
+    $("pnr-availability").textContent = status.pnr_connected
+      ? `Connected to ${status.provider}. Status depends on the provider response; this is a third-party service.`
+      : "Live PNR is not configured on this server yet. You can still try the fictional sample below.";
+  } catch (err) {
+    $("pnr-availability").textContent = "Could not check the PNR provider connection.";
+  }
 }
 async function loadLive(origin, destination) {
   const target = $("live-result");
@@ -77,7 +87,7 @@ function showSession(role) {
   $("logout").hidden = !role;
   $("signed-in").textContent = role === "admin" ? "Administrator" : "Passenger";
   document.querySelectorAll(".admin-only").forEach((item) => { item.hidden = role !== "admin"; });
-  if (role) loadTrains();
+  if (role) { loadTrains(); refreshCapabilities(); }
 }
 $("login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -126,7 +136,7 @@ $("history-form").addEventListener("submit", async (event) => {
     if (result.schedule_only_count)
       summary.append(el("p", "hint", `Some fares are estimates because recorded prices are unavailable. Check current fares and seats before booking.`));
     if (totalTrains === 1)
-      summary.append(el("p", "callout", "Only one train matches this route and these filters, so all three sort choices show the same train."));
+      summary.append(el("p", "callout", "Only one train matches this route and these filters, so every sort choice shows the same train."));
     target.append(summary);
     const ranked = [
       ...result.options.map((item) => ({item, estimated: false})),
@@ -341,9 +351,17 @@ $("support-form").addEventListener("submit", async (event) => {
 });
 $("pnr-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  try { simpleResult($("pnr-result"), await api("/api/pnr", {pnr: $("pnr").value})); }
+  const target = $("pnr-result");
+  target.replaceChildren(el("div", "callout", "Checking the connected PNR provider…"));
+  try { simpleResult(target, await api("/api/live-pnr", {pnr: $("pnr").value})); }
   catch (err) { error($("pnr-result"), err); }
 });
+for (const [id, pnr] of [["sample-pnr-one", "1234567890"], ["sample-pnr-two", "9876543210"]]) {
+  $(id).addEventListener("click", async () => {
+    try { simpleResult($("sample-pnr-result"), await api("/api/pnr", {pnr})); }
+    catch (err) { error($("sample-pnr-result"), err); }
+  });
+}
 $("refund-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   try { simpleResult($("refund-result"), await api("/api/refund", {reference: $("refund-reference").value})); }

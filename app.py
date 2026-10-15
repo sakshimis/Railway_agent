@@ -22,10 +22,11 @@ from railway import (
 from historical import (search as historical_search, stations as historical_stations,
                         report as kaggle_report, station_details as historical_station_details,
                         train_on_route)
-from live_railway import (
+from live_providers import (
     LiveServiceUnavailable, configured as live_configured, search_live,
-    search_live_pnr, search_live_seats,
+    search_live_pnr, search_live_seats, live_train_status, provider_name, pnr_configured,
 )
+from outcomes import summary as outcome_summary
 
 WEB = ROOT / "web"
 ITINERARIES = ROOT / "runtime" / "itineraries.jsonl"
@@ -78,14 +79,19 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"role": self.role(), "configured": ACCOUNTS.exists()})
         if path == "/api/live-status":
             if not self.require_role(): return
-            return self.send_json(200, {"connected": live_configured()})
+            return self.send_json(200, {"connected": live_configured(),
+                                        "pnr_connected": pnr_configured(),
+                                        "provider": provider_name()})
         if path == "/api/trains":
             if not self.require_role(): return
             trains = read_json("trains.json")
             return self.send_json(200, [{"id": t["id"], "name": t["name"], "fare": t["fare"]} for t in trains])
         if path == "/api/governance":
             if not self.require_role(admin=True): return
-            return self.send_json(200, governance_report())
+            report = governance_report()
+            offline_mae = kaggle_report().get("delay_model", {}).get("test_mae_minutes")
+            report["live_outcome_monitoring"] = outcome_summary(offline_mae)
+            return self.send_json(200, report)
         if path == "/api/audit":
             if not self.require_role(admin=True): return
             return self.send_json(200, recent_audit(30))
@@ -200,6 +206,12 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 audit("live_seats_checked", {"train_no": result["train_no"], "availability": result["availability"]},
                       round((time.perf_counter() - started) * 1000))
+            elif path == "/api/live-train-status":
+                result = live_train_status(str(body.get("train_no", "")),
+                                           str(body.get("start_day", "")))
+                audit("live_train_status_checked", {"train_no": result["train_no"],
+                                                    "delay_minutes": result["delay_minutes"]},
+                      round((time.perf_counter() - started) * 1000))
             elif path == "/api/confirmation":
                 result = confirmation_prediction(int(body["wl_position"]),
                                                  int(body["days_before"]),
@@ -215,7 +227,8 @@ class Handler(BaseHTTPRequestHandler):
                 audit("fare_scenario_estimated", {"train_id": train["id"]},
                       round((time.perf_counter() - started) * 1000))
             elif path == "/api/pnr":
-                result = pnr_status(str(body.get("pnr", "")))
+                pnr = str(body.get("pnr", "")).strip()
+                result = pnr_status(pnr)
                 audit("pnr_demo_lookup", {"status": result["status"]},
                       round((time.perf_counter() - started) * 1000))
             elif path == "/api/refund":
@@ -338,7 +351,7 @@ def main() -> None:
         return
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     print(f"Railway AI demo: http://127.0.0.1:{args.port}", flush=True)
-    print("Kaggle historical data plus separate synthetic demo. No live railway data. Press Ctrl+C to stop.", flush=True)
+    print("Historical journey search; live PNR only when a provider is configured. Press Ctrl+C to stop.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
