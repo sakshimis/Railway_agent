@@ -6,6 +6,17 @@ An end-to-end **local demonstration** of the *AI-Powered Intelligent Railway Tra
 
 The placement notice asks students to submit the **GitHub repository link** through the Google Form when it is shared, by **16 October 2026, 10:00 AM**. Repository: https://github.com/sakshimis/Railway_agent. The repository link is the requested submission item; the local demo URL below works only on the computer running the app. Use [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for a walkthrough and [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) for setup and presentation notes.
 
+### Reviewer login (local demo only)
+
+After starting the app on your own computer, sign in at `http://127.0.0.1:8765` with either account:
+
+| Role | Username | Password |
+|---|---|---|
+| Passenger | `user` | `123456789012` |
+| Administrator | `admin` | `123456789012` |
+
+These credentials match the current local demo accounts but are **publicly documented for evaluation**. On a fresh clone, run `python app.py --init-users` and enter the listed password for each account when prompted. Replace both passwords before hosting the app or using non-demo data. The GitHub repository itself is not a hosted website.
+
 **Scope and limitations:** This is an educational prototype, not an operational railway service. Passenger recommendations use historical Kaggle snapshots and model estimates. With the user's own RapidAPI credentials, third-party PNR, train-number timetable, and indicative per-train fare enquiries are available; no credentials are bundled. The provider fare request has no travel date, and live seat availability and dated booking quotes are unavailable. Booking/payment, real confirmation outcomes and production-scale governance are not implemented. The PostgreSQL schema is a proposed design; the running app uses SQLite and local files. Do not use the demo to make real travel or booking decisions.
 
 This local Python web app separates passenger and administrator roles. Passenger route search uses a public Kaggle **historical snapshot**, while the admin area holds synthetic agent scenarios, model demonstrations, governance and audit. It is an educational prototype, not a live railway booking service.
