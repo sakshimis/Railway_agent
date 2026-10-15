@@ -2,6 +2,8 @@
 
 > Educational prototype with historical and synthetic data. It is not a live railway service. See [the case-study checklist](REQUIREMENTS.md), [data sources](DATA_SOURCES.md), and [GitHub publishing steps](GITHUB_SETUP.md).
 
+For submission, follow [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) and present with [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Source repository: https://github.com/sakshimis/Railway_agent.
+
 This local Python web app separates passenger and administrator roles. Passenger route search uses a public Kaggle **historical snapshot**, while the admin area holds synthetic agent scenarios, model demonstrations, governance and audit. It is an educational prototype, not a live railway booking service.
 
 `db/postgres_schema.sql` is a proposed PostgreSQL schema for the next development stage. The running app still uses its bundled SQLite catalog and local runtime files; no PostgreSQL migration has been performed.

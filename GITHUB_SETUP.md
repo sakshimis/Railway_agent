@@ -1,5 +1,7 @@
 # Publish this project to GitHub
 
+The project repository has already been created at https://github.com/sakshimis/Railway_agent. For subsequent local commits, run `git push origin main` from the runnable project folder. The first-push instructions below are retained only for someone making a separate copy.
+
 This repository is a **local educational prototype**. Read `README.md`, `REQUIREMENTS.md` and `DATA_SOURCES.md` before publishing it. It does not provide a live railway API or production booking.
 
 ## Before the first push
