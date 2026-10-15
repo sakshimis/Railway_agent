@@ -10,7 +10,7 @@ The placement notice asks students to submit the **GitHub repository link** thro
 
 This local Python web app separates passenger and administrator roles. Passenger route search uses a public Kaggle **historical snapshot**, while the admin area holds synthetic agent scenarios, model demonstrations, governance and audit. It is an educational prototype, not a live railway booking service.
 
-The passenger support page has a server-side live PNR integration for the selected third-party RapidAPI endpoint. It requires your own RapidAPI subscription, host and private key. The planner separately reports current fares and seats as unavailable until a compatible provider is connected. See [LIVE_API_SETUP.md](LIVE_API_SETUP.md). No external fare or seat links are shown to passengers.
+The passenger support page has a server-side PNR integration for the selected third-party RapidAPI endpoint. The planner also has a separate train-number timetable lookup (`GET /schedule/{trainNo}`). Both require your own RapidAPI subscription, host and private key. Current route fares and seats remain unavailable until compatible endpoints are connected. See [LIVE_API_SETUP.md](LIVE_API_SETUP.md). No external fare or seat links are shown to passengers.
 
 `db/postgres_schema.sql` is a proposed PostgreSQL schema for the next development stage. The running app still uses its bundled SQLite catalog and local runtime files; no PostgreSQL migration has been performed.
 

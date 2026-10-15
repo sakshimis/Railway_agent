@@ -54,6 +54,14 @@
           <label for="sort">Sort results</label><select id="sort"><option value="balanced">Best value / balanced recommendation (fare, duration &amp; delay)</option><option value="fare">Lowest historical fare or estimated fare</option><option value="duration">Shortest scheduled journey</option><option value="departure">Earliest departure</option></select>
           <button type="submit" class="primary">Find trains →</button>
       </form>
+      <form id="schedule-form" class="card schedule-form">
+        <div class="card-kicker"><span class="status-light"></span> PROVIDER TIMETABLE</div>
+        <h3>Know your train number?</h3>
+        <p class="hint">Look up the station stops and timetable for one train. This does not confirm that it runs on your selected travel date.</p>
+        <div class="schedule-controls"><div><label for="schedule-train">Train number</label><input id="schedule-train" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" placeholder="e.g. 12124" required></div><button type="submit" class="primary">View schedule →</button></div>
+        <p id="schedule-availability" class="hint">Checking provider connection…</p>
+        <div id="schedule-result" class="mini-result" aria-live="polite"></div>
+      </form>
       <div id="live-result" class="result" aria-live="polite"></div>
       <div id="history-result" class="result" aria-live="polite"></div>
     </section>

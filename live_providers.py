@@ -33,12 +33,13 @@ _CACHE: dict[str, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
 _RATE_LOCK = threading.Lock()
 _last_call = 0.0
-TTL_SECONDS = {"between": 3600, "pnr": 300, "seats": 600, "live": 120}
-DEFAULT_PATHS = {  # only the PNR path is shown in the selected provider's documentation
+TTL_SECONDS = {"between": 3600, "pnr": 300, "seats": 600, "live": 120, "schedule": 3600}
+DEFAULT_PATHS = {  # only PNR and train-number schedule paths are confirmed from user screenshots
     "between": "",
     "pnr": "/getPNRStatus/{pnrNumber}",
     "seats": "",
     "live": "",
+    "schedule": "/schedule/{trainNo}",
 }
 
 
@@ -54,6 +55,10 @@ def configured() -> bool:
 
 def pnr_configured() -> bool:
     return live_railway.configured() or rapid_configured()
+
+
+def schedule_configured() -> bool:
+    return rapid_configured()
 
 
 def provider_name() -> str:
@@ -127,6 +132,51 @@ def search_live_pnr(pnr: str) -> dict:
         "as_of": _now(),
         "source": provider_name(),
     }
+
+
+def search_live_schedule(train_no: str) -> dict:
+    """Look up the provider's current published timetable for one train number."""
+    if not rapid_configured():
+        raise LiveServiceUnavailable("Train schedule lookup is not connected yet.")
+    train_no = _train(train_no)
+    data = _rapid("schedule", {"trainNo": train_no})
+    body = data.get("data", data)
+    if isinstance(body, list):
+        rows, details = body, {}
+    elif isinstance(body, dict):
+        details = body
+        rows = next((body[k] for k in ("route", "stations", "schedule", "stops", "stationList")
+                     if isinstance(body.get(k), list)), None)
+        if rows is None and isinstance(body.get("data"), dict):
+            nested = body["data"]
+            rows = next((nested[k] for k in ("route", "stations", "schedule", "stops", "stationList")
+                         if isinstance(nested.get(k), list)), None)
+            details = nested
+    else:
+        rows, details = None, {}
+    if not isinstance(rows, list):
+        raise LiveServiceUnavailable("The schedule provider returned an unfamiliar format; mapping is needed.")
+    stops = []
+    for row in rows[:200]:
+        if not isinstance(row, dict):
+            continue
+        code = _pick(row, "stationCode", "station_code", "stationNo", "code", "station")
+        name = _pick(row, "stationName", "station_name", "name")
+        if not code and not name:
+            continue
+        stops.append({
+            "station_code": str(code or "")[:12],
+            "station_name": str(name or "")[:100],
+            "arrival": str(_pick(row, "arrivalTime", "arrival_time", "arrival", "sta") or "")[:32],
+            "departure": str(_pick(row, "departureTime", "departure_time", "departure", "std") or "")[:32],
+            "day": str(_pick(row, "day", "dayCount", "day_number", "dayNumber") or "")[:8],
+        })
+    if not stops:
+        raise LiveServiceUnavailable("The provider returned no usable station stops for this train.")
+    return {"train_no": train_no,
+            "train_name": str(_pick(details, "trainName", "train_name", "name") or "")[:120],
+            "stops": stops, "as_of": _now(), "source": provider_name(),
+            "notice": "Provider timetable enquiry; running days and service on a chosen date are not verified."}
 
 
 def search_live_seats(train_no: str, travel_date: str, travel_class: str,

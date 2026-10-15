@@ -116,6 +116,26 @@ class LiveProviderTests(unittest.TestCase):
         self.assertEqual(seen[0].get_header("X-rapidapi-key"), "test-key")
         self.assertNotIn("test-key", json.dumps(result))
 
+    def test_schedule_endpoint_maps_train_stops_without_inventing_times(self):
+        payload = {"success": True, "data": {"trainName": "Example Express", "route": [
+            {"stationCode": "CSMT", "stationName": "Mumbai CSMT", "departureTime": "14:00", "day": 1},
+            {"stationCode": "PUNE", "stationName": "Pune Jn", "arrivalTime": "17:20", "departureTime": "17:30", "day": 1}]}}
+        seen = []
+        def capture(request, timeout=8):
+            seen.append(request.full_url)
+            return FakeResponse(json.dumps(payload).encode())
+        with env(), mock.patch.object(live_providers, "urlopen", capture):
+            result = live_providers.search_live_schedule("12124")
+        self.assertEqual(seen[0], "https://example.p.rapidapi.com/schedule/12124")
+        self.assertEqual(result["stops"][0]["arrival"], "")
+        self.assertEqual(result["stops"][1]["station_code"], "PUNE")
+
+    def test_schedule_rejects_unknown_provider_shape(self):
+        with env(), mock.patch.object(live_providers, "urlopen", fake_urlopen({
+                "success": True, "data": {"message": "ok"}})):
+            with self.assertRaisesRegex(LiveServiceUnavailable, "unfamiliar format"):
+                live_providers.search_live_schedule("12124")
+
     def test_input_validation(self):
         with env():
             with self.assertRaises(ValueError):

@@ -17,6 +17,12 @@ The path variable is optional for this PNR endpoint; it is shown to make the map
 
 **PNR access does not provide live fares, seats, train search or booking.** Those features stay unavailable unless you separately configure and verify suitable endpoints, response mappings and usage rights. The route and seat RapidAPI paths are intentionally blank by default because the selected PNR page does not document them.
 
+## Train-number timetable endpoint
+
+The same provider's code snippet shows `GET /schedule/{trainNo}`. The journey planner now has a separate **Know your train number?** form using that path. It uses the same `RAPIDAPI_HOST` and `RAPIDAPI_KEY` as PNR, so no additional secret is needed. The adapter accepts common `route`/`stations`/`schedule` stop arrays and displays only station names/codes and arrival/departure times. An unfamiliar response is reported as a mapping error rather than invented timetable data. A provider timetable does not by itself verify that the train runs on a particular travel date.
+
+This is a train-number lookup, **not** a trains-between-stations API. The main route comparison still uses historical data until a separate documented route-search endpoint is connected.
+
 The passenger page no longer sends people to an external railway website. Its own server has `/api/live-status` and `/api/live-search` endpoints. Without approved provider access, the page says that current fares and seats are unavailable and continues to show clearly labeled historical comparisons. This is an integration point, **not a working IRCTC connection**.
 
 ## How to obtain authorized data

@@ -17,7 +17,7 @@ async function api(path, body) {
   const response = await fetch(path, options);
   const result = await response.json();
   if (!response.ok) {
-    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search", "/api/live-pnr"].includes(path))
+    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search", "/api/live-pnr", "/api/live-schedule"].includes(path))
       throw new Error("The page was updated but the server is still running old code. Stop the server with Ctrl+C, then start it again.");
     throw new Error(result.error || "Request failed");
   }
@@ -35,8 +35,12 @@ async function refreshCapabilities() {
     $("pnr-availability").textContent = status.pnr_connected
       ? `Connected to ${status.provider}. Status depends on the provider response; this is a third-party service.`
       : "Live PNR is not configured on this server yet. You can still try the fictional sample below.";
+    $("schedule-availability").textContent = status.schedule_connected
+      ? `Provider timetable lookup connected through ${status.provider}.`
+      : "Train schedule lookup is not configured on this server yet.";
   } catch (err) {
     $("pnr-availability").textContent = "Could not check the PNR provider connection.";
+    $("schedule-availability").textContent = "Could not check the schedule provider connection.";
   }
 }
 async function loadLive(origin, destination) {
@@ -355,6 +359,34 @@ $("pnr-form").addEventListener("submit", async (event) => {
   target.replaceChildren(el("div", "callout", "Checking the connected PNR provider…"));
   try { simpleResult(target, await api("/api/live-pnr", {pnr: $("pnr").value})); }
   catch (err) { error($("pnr-result"), err); }
+});
+$("schedule-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const target = $("schedule-result");
+  target.replaceChildren(el("div", "callout", "Checking the provider timetable…"));
+  try {
+    const result = await api("/api/live-schedule", {train_no: $("schedule-train").value});
+    target.replaceChildren();
+    target.append(el("h3", "", `${result.train_no} ${result.train_name}`.trim()));
+    target.append(el("p", "hint", `${result.stops.length} stops · ${result.notice}`));
+    const wrapper = el("div", "schedule-table-wrap");
+    const table = el("table", "schedule-table");
+    const head = el("thead");
+    const labels = el("tr");
+    ["Station", "Arrives", "Departs", "Day"].forEach((label) => labels.append(el("th", "", label)));
+    head.append(labels);
+    const body = el("tbody");
+    result.stops.forEach((stop) => {
+      const row = el("tr");
+      [stop.station_name ? `${stop.station_name} (${stop.station_code})` : stop.station_code,
+       stop.arrival || "—", stop.departure || "—", stop.day || "—"]
+        .forEach((value) => row.append(el("td", "", value)));
+      body.append(row);
+    });
+    table.append(head, body);
+    wrapper.append(table);
+    target.append(wrapper, el("p", "subtle", `Source: ${result.source}; checked ${result.as_of}`));
+  } catch (err) { error(target, err); }
 });
 for (const [id, pnr] of [["sample-pnr-one", "1234567890"], ["sample-pnr-two", "9876543210"]]) {
   $(id).addEventListener("click", async () => {
