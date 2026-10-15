@@ -5,4 +5,3 @@
 .fare-options{display:flex;flex-wrap:wrap;gap:9px;margin:13px 0 8px}.fare-option{display:inline-block;padding:9px 13px;border:1px solid #b8d8c5;border-radius:999px;background:#eaf6ed;color:#0b614e;font-weight:800}
 .card .callout{display:block;background:#f1f7ee;border:1px solid #d7e7d5;border-radius:10px;padding:12px 14px;color:#315944;line-height:1.5}
 .other-trains{margin-top:16px}.other-trains summary{cursor:pointer;background:#fff;border:1px solid #cbded7;border-radius:10px;padding:14px 17px;color:#0b614e;font-weight:800}.other-trains[open] summary{margin-bottom:12px}
-.official-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}.official-link{display:inline-block;color:#0b614e;font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:5px 0}.official-link:focus-visible{outline:2px solid #0b614e;outline-offset:3px}

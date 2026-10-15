@@ -21,6 +21,7 @@ from railway import (
 )
 from historical import (search as historical_search, stations as historical_stations,
                         report as kaggle_report, train_on_route)
+from live_railway import LiveServiceUnavailable, configured as live_configured, search_live
 
 WEB = ROOT / "web"
 ITINERARIES = ROOT / "runtime" / "itineraries.jsonl"
@@ -58,6 +59,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, historical_stations(query))
         if path == "/api/session":
             return self.send_json(200, {"role": self.role(), "configured": ACCOUNTS.exists()})
+        if path == "/api/live-status":
+            if not self.require_role(): return
+            return self.send_json(200, {"connected": live_configured()})
         if path == "/api/trains":
             if not self.require_role(): return
             trains = read_json("trains.json")
@@ -153,6 +157,15 @@ class Handler(BaseHTTPRequestHandler):
                                                      "destination_code": result["destination_code"],
                                                      "matching_trains": result["matching_trains"]},
                       round((time.perf_counter() - started) * 1000))
+            elif path == "/api/live-search":
+                result = search_live(str(body.get("origin", "")),
+                                     str(body.get("destination", "")),
+                                     str(body.get("travel_date", "")),
+                                     str(body.get("class", "")))
+                audit("live_route_searched", {"origin_code": result["origin"],
+                                               "destination_code": result["destination"],
+                                               "matching_trains": len(result["trains"])},
+                      round((time.perf_counter() - started) * 1000))
             elif path == "/api/confirmation":
                 result = confirmation_prediction(int(body["wl_position"]),
                                                  int(body["days_before"]),
@@ -233,6 +246,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, result)
         except LoginRateLimited as exc:
             self.send_json(429, {"error": str(exc)})
+        except LiveServiceUnavailable as exc:
+            self.send_json(503, {"error": str(exc)})
         except PermissionError as exc:
             self.send_json(403, {"error": str(exc)})
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:

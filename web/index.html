@@ -26,7 +26,7 @@
       <div class="eyebrow">RAILWAY TRAVEL ASSISTANT</div>
       <h1>Plan your journey.</h1>
       <p>Compare routes, travel times and fares.</p>
-      <div class="notice">Historical data only. Check current prices and seats before you travel.</div>
+      <div class="notice">Historical results are labeled below. Current prices and seats appear only when a live feed is connected.</div>
     </section>
     <nav class="tabs" aria-label="Demo sections">
       <button class="tab active" data-tab="planner">Journey planner</button>
@@ -37,21 +37,21 @@
       <button class="tab admin-only" data-tab="simulation">Scenario lab</button>
     </nav>
     <section class="panel active" id="planner">
-      <div class="section-head"><div><div class="eyebrow">01 / HISTORICAL ROUTE SEARCH</div><h2>Journey planner</h2></div><span class="tag">October 2023 snapshot</span></div>
+      <div class="section-head"><div><div class="eyebrow">01 / TRAIN SEARCH</div><h2>Journey planner</h2></div><span class="tag">Historical comparison</span></div>
       <form id="history-form" class="card planner-form">
           <label for="quick-query">Or describe a route (optional)</label><input id="quick-query" placeholder="from Pune to Delhi under 1500 sleeper">
           <p class="hint">A sentence can fill the route, budget and class.</p>
           <label for="origin">From station or code</label><input id="origin" value="PUNE" list="station-list" required>
           <label for="destination">To station or code</label><input id="destination" value="NDLS" list="station-list" required>
           <datalist id="station-list"></datalist>
-          <label for="travel-date">Journey date for official check</label><input id="travel-date" type="date" required>
-          <p class="hint">Use this date when checking current fares and seats on the official site.</p>
+          <label for="travel-date">Journey date</label><input id="travel-date" type="date" required>
           <label for="travel-class">Travel class</label><select id="travel-class"><option value="">All classes</option><option>SL</option><option>3A</option><option>2A</option><option>1A</option><option>CC</option><option>2S</option></select>
           <label for="max-fare">Maximum historical fare (₹, optional)</label><input id="max-fare" type="number" min="1" placeholder="No limit">
           <label for="max-duration">Maximum scheduled journey (hours, optional)</label><input id="max-duration" type="number" min="1" max="168" placeholder="No limit">
           <label for="sort">Sort results</label><select id="sort"><option value="fare">Lowest historical fare or estimated fare</option><option value="duration">Shortest scheduled journey</option><option value="departure">Earliest departure</option></select>
           <button type="submit" class="primary">Find trains →</button>
       </form>
+      <div id="live-result" class="result" aria-live="polite"></div>
       <div id="history-result" class="result" aria-live="polite"></div>
     </section>
     <section class="panel admin-only" id="predictions">

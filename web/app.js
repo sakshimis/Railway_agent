@@ -17,7 +17,7 @@ async function api(path, body) {
   const response = await fetch(path, options);
   const result = await response.json();
   if (!response.ok) {
-    if (response.status === 404 && path === "/api/historical-search")
+    if (response.status === 404 && ["/api/historical-search", "/api/live-status", "/api/live-search"].includes(path))
       throw new Error("The page was updated but the server is still running old code. Stop the server with Ctrl+C, then start it again.");
     throw new Error(result.error || "Request failed");
   }
@@ -29,21 +29,39 @@ function line(target, label, value) {
   row.append(el("strong", "", label + ": "), document.createTextNode(String(value)));
   target.append(row);
 }
-function officialCheck(target, trainNo, origin, destination) {
-  const date = $("travel-date").value;
-  const note = el("p", "hint", `Check train ${trainNo} for ${date} on the official site. Current results are not shown here.`);
-  const links = el("div", "official-actions");
-  for (const [label, href] of [
-    ["Check current fare ↗", "https://www.indianrail.gov.in/enquiry/FARE/FareEnquiry.html?locale=en"],
-    ["Check seats ↗", "https://www.indianrail.gov.in/enquiry/SEAT/SeatAvailability.html?locale=en"]
-  ]) {
-    const link = el("a", "official-link", label);
-    link.href = href;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    links.append(link);
+async function loadLive(origin, destination) {
+  const target = $("live-result");
+  target.replaceChildren();
+  try {
+    const status = await api("/api/live-status");
+    if (!status.connected) {
+      target.append(el("p", "hint", "Current fares and seats are not connected. Historical results are shown below."));
+      return;
+    }
+    target.append(el("div", "card", "Loading current fares and seats…"));
+    const result = await api("/api/live-search", {
+      origin, destination, travel_date: $("travel-date").value,
+      class: $("travel-class").value
+    });
+    target.replaceChildren();
+    const summary = el("div", "card");
+    summary.append(el("h3", "", `Current fares and seats · ${result.travel_date}`));
+    summary.append(el("p", "hint", `Provider updated: ${result.as_of}`));
+    if (!result.trains.length) summary.append(el("p", "", "No current trains returned for this route and date."));
+    target.append(summary);
+    result.trains.forEach((train) => {
+      const card = el("div", "card train-card");
+      card.append(el("h3", "", `${train.train_no} · ${train.name}`));
+      line(card, "Class", train.class || "Unknown");
+      line(card, "Current fare", train.fare_rupees == null ? "Unknown" : `₹${train.fare_rupees}`);
+      line(card, "Seat status", train.availability);
+      if (train.departure) line(card, "Departure", train.departure);
+      if (train.arrival) line(card, "Arrival", train.arrival);
+      target.append(card);
+    });
+  } catch (err) {
+    target.replaceChildren(el("p", "hint", err.message));
   }
-  target.append(note, links);
 }
 function simpleResult(target, object) {
   target.replaceChildren();
@@ -89,6 +107,7 @@ document.querySelectorAll(".tab").forEach((button) => button.addEventListener("c
 $("history-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const target = $("history-result");
+  $("live-result").replaceChildren();
   target.replaceChildren(el("div", "card", "Searching historical records…"));
   try {
     const result = await api("/api/historical-search", {
@@ -98,6 +117,7 @@ $("history-form").addEventListener("submit", async (event) => {
       max_duration_hours: $("max-duration").value,
       sort: $("sort").value
     });
+    loadLive(result.origin_code, result.destination_code);
     target.replaceChildren();
     const summary = el("div", "card");
     summary.append(el("h3", "", `${result.origin_code} → ${result.destination_code}`));
@@ -136,7 +156,6 @@ $("history-form").addEventListener("submit", async (event) => {
       line(card, "Scheduled duration", `${Math.floor(item.duration_minutes / 60)} h ${item.duration_minutes % 60} min`);
       if (estimated) line(card, "Timetable distance", `${item.distance_km} km`);
       if (item.delay_history.observations >= 20) line(card, "Historical average arrival delay", `${item.delay_history.minutes} min (2025–26; ${item.delay_history.observations} observations)`);
-      officialCheck(card, item.train_no, result.origin_code, result.destination_code);
       if (featured) {
         const feedback = el("div", "row");
         feedback.append(el("span", "hint", "Was this first result useful?"));

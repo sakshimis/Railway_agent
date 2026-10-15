@@ -15,6 +15,7 @@ from app import Handler
 from historical import (search as historical_search, report as kaggle_report,
                         resolve_station, stations, train_on_route)
 import auth
+import live_railway
 
 
 TODAY = date(2026, 10, 14)
@@ -22,6 +23,33 @@ QUERY = "I want to travel from Pune to Delhi tomorrow under 1500 before 10:00 AM
 
 
 class RailwayDemoTests(unittest.TestCase):
+    def test_live_feed_requires_authorized_configuration(self):
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertFalse(live_railway.configured())
+            with self.assertRaises(live_railway.LiveServiceUnavailable):
+                live_railway.search_live("PUNE", "NDLS", "2026-10-20", "SL")
+
+    def test_live_feed_adapter_keeps_token_on_server(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *_): return None
+            def read(self, _limit):
+                return json.dumps({"as_of": "2026-10-15T10:00:00+05:30", "trains": [{
+                    "train_no": "12345", "name": "Example", "class": "SL",
+                    "fare_rupees": 750, "availability": "AVAILABLE",
+                    "departure": "18:30", "arrival": "09:40"
+                }]}).encode()
+        settings = {"RAILWAY_LIVE_API_URL": "https://provider.example/api/trains",
+                    "RAILWAY_LIVE_API_TOKEN": "test-secret"}
+        with patch.dict("os.environ", settings), patch("live_railway.urlopen", return_value=Response()) as send:
+            result = live_railway.search_live("pune", "ndls", "2026-10-20", "SL")
+        self.assertEqual(result["trains"][0]["fare_rupees"], 750)
+        self.assertEqual(result["trains"][0]["availability"], "AVAILABLE")
+        request = send.call_args.args[0]
+        self.assertIn("origin=PUNE", request.full_url)
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-secret")
+        self.assertNotIn("test-secret", json.dumps(result))
+
     def test_request_parsing_and_date(self):
         parsed = parse_request(QUERY, TODAY)
         self.assertEqual(parsed["origin"], "Pune")
@@ -108,6 +136,14 @@ class RailwayDemoTests(unittest.TestCase):
             return status[0], json.loads(handler.wfile.getvalue())
 
         with patch("app.audit"), patch("app.session_role", return_value="user"):
+            with patch("app.live_configured", return_value=False):
+                status, live_status = call("/api/live-status")
+                self.assertEqual((status, live_status["connected"]), (200, False))
+            with patch.dict("os.environ", {}, clear=True):
+                status, live_result = call("/api/live-search", {
+                    "origin": "PUNE", "destination": "NDLS", "travel_date": "2026-10-20"})
+                self.assertEqual(status, 503)
+                self.assertIn("not connected", live_result["error"])
             status, result = call("/api/plan", {"query": QUERY})
             self.assertEqual(status, 403)
             status, result = call("/api/historical-search", {"origin": "PUNE", "destination": "NDLS"})

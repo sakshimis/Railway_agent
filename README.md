@@ -6,6 +6,8 @@ For submission, follow [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) and present wi
 
 This local Python web app separates passenger and administrator roles. Passenger route search uses a public Kaggle **historical snapshot**, while the admin area holds synthetic agent scenarios, model demonstrations, governance and audit. It is an educational prototype, not a live railway booking service.
 
+The passenger planner has an in-app live fare/seat API endpoint, but no authorized provider credentials are configured. It reports live data as unavailable until a provider is connected. See [LIVE_API_SETUP.md](LIVE_API_SETUP.md). No external fare or seat links are shown to passengers.
+
 `db/postgres_schema.sql` is a proposed PostgreSQL schema for the next development stage. The running app still uses its bundled SQLite catalog and local runtime files; no PostgreSQL migration has been performed.
 
 ## Start on Windows
@@ -16,11 +18,11 @@ This local Python web app separates passenger and administrator roles. Passenger
 4. Start: `.\.venv\Scripts\python.exe app.py` (or double-click `start_windows.cmd`).
 5. Open `http://127.0.0.1:8765`.
 
-No third-party Python package is required to run the app. The bundled historical catalog and delay model are generated from Kaggle datasets. Passenger pages never show a live seat status or claim that 2023 fares are current.
+No third-party Python package is required to run the app. The bundled historical catalog and delay model are generated from Kaggle datasets. Without an authorized provider, passenger pages do not show live seat status or claim that 2023 fares are current.
 
 ## What is in each page
 
-- **Journey planner (passenger):** station code/name search or a simple route sentence, travel class, maximum historical fare, maximum scheduled duration and sort. Station suggestions cover all 3,766 timetable station codes. Results show observed 2023 fares where available. When a route lacks a fare record, the app gives class-specific **estimated 2023 fares** from a held-out-tested distance model. It does not know which classes a particular train offers. Recorded-fare and timetable-only trains are sorted in one visible list, with each fare source labeled. Without a chosen class, fare order uses Sleeper (SL). The top match follows the selected sort, with other trains expandable. Passengers can rate the usefulness of the first result; this voluntary feedback is reported separately to admins and does not prove recommendation accuracy. A travel date and each result's train and station codes help you check the current fare and seats on the linked official Indian Railways enquiry pages. Those official results stay on the official site and are not imported into this app. Try `PUNE` to `NDLS` for one recorded-fare train and one timetable-only train, or `PUNE` to `RTM` for estimates. There is no booking action.
+- **Journey planner (passenger):** station code/name search or a simple route sentence, travel class, maximum historical fare, maximum scheduled duration and sort. Station suggestions cover all 3,766 timetable station codes. Results show observed 2023 fares where available. When a route lacks a fare record, the app gives class-specific **estimated 2023 fares** from a held-out-tested distance model. It does not know which classes a particular train offers. Recorded-fare and timetable-only trains are sorted in one visible list, with each fare source labeled. Without a chosen class, fare order uses Sleeper (SL). The top match follows the selected sort, with other trains expandable. Passengers can rate the usefulness of the first result; this voluntary feedback is reported separately to admins and does not prove recommendation accuracy. A travel date is sent to the in-app live-data adapter, which currently reports unavailable because no authorized provider is connected. Try `PUNE` to `NDLS` for one recorded-fare train and one timetable-only train, or `PUNE` to `RTM` for estimates. There is no booking action.
 - **Passenger support:** sample PNR/refund records and limited English/Hindi answers. These are synthetic and cannot answer live account questions.
 - **Model lab (admin):** clearly synthetic confirmation and fare scenario controls, with technical explanations restricted to admins.
 - **Governance (admin):** Kaggle source counts, model test error, quality exclusions, audit, and a separate synthetic lifecycle exercise.
